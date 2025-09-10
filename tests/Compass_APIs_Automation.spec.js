@@ -5,17 +5,17 @@ import https from "https";
 const BASE_URL = "https://cafemanager-api.cafebonappetit.com/api/wastenot";
 const BASIC_AUTH = Buffer.from("bamco:HwzwlYucR4NMx50EMoFG").toString("base64");
 
-// ✅ Utility to format dates as YYYY-MM-DD
+// Utility to format dates as YYYY-MM-DD
 function formatDate(date) {
   return date.toISOString().split("T")[0];
 }
 
-// ✅ Dynamic date range (till yesterday)
+// Dynamic date range (till yesterday)
 const today = new Date();
 const yesterday = new Date(today);
 yesterday.setDate(today.getDate() - 1);
 
-// Example: 1 year range ending yesterday
+// 1 year range ending yesterday
 function getDateRange(daysBack = 365) {
   const end = formatDate(yesterday);
   const startDate = new Date(yesterday);
@@ -46,7 +46,7 @@ async function fetchWithAuth(url) {
   });
 }
 
-// ✅ required fields for Compass API
+// required fields for Compass API
 const requiredFields = [
   "id",
   "tablet_id",
@@ -70,7 +70,7 @@ const requiredFields = [
   "waste_destination",
 ];
 
-// ✅ Build API list dynamically
+// Build API list dynamically
 const { start, end } = getDateRange(365);
 
 const apis = [
@@ -109,7 +109,7 @@ apis.forEach((api) => {
       expect(response.status).toBe(200);
       const json = JSON.parse(response.body);
 
-      // ✅ Validate required fields in wastes
+      // Validate required fields in wastes
       if (json.wastes && Array.isArray(json.wastes)) {
         json.wastes.forEach((waste, index) => {
           requiredFields.forEach((field) => {

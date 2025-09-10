@@ -2,12 +2,10 @@ import { test, expect } from "@playwright/test";
 import fs from "fs";
 import https from "https";
 
-// 🔹 Utility for formatting dates to YYYY-MM-DD
 function formatDate(date) {
   return date.toISOString().split("T")[0];
 }
 
-// 🔹 Dynamic dates (yesterday as end date, 1 year back as start)
 const today = new Date();
 const yesterday = new Date(today);
 yesterday.setDate(today.getDate() - 1);
@@ -15,8 +13,8 @@ yesterday.setDate(today.getDate() - 1);
 const oneYearAgo = new Date(yesterday);
 oneYearAgo.setFullYear(yesterday.getFullYear() - 1);
 
-const startDate = formatDate(oneYearAgo); // e.g., 2024-09-07
-const endDate = formatDate(yesterday);    // e.g., 2025-09-07
+const startDate = formatDate(oneYearAgo);
+const endDate = formatDate(yesterday);
 
 const BASE_URL = "https://cafemanager-api.cafebonappetit.com/api/wastenot";
 const BASIC_AUTH = Buffer.from("bamco:HwzwlYucR4NMx50EMoFG").toString("base64");
@@ -43,7 +41,7 @@ async function fetchWithAuth(url) {
   });
 }
 
-// 🔹 APIs with dynamic date range
+// APIs with dynamic date range
 const apis = [
   { name: "non_entry_id", params: { sector: "A0000", start: startDate, end: endDate, limit: "1000", bamco: "1" } },
   { name: "app_date", params: { sector: "A0000", start: startDate, end: endDate, limit: "1000", bamco: "1", app_date: "1" } },
@@ -54,7 +52,7 @@ const apis = [
   { name: "account", params: { account: "531", start: startDate, end: endDate, limit: "1000", bamco: "1" } },
 ];
 
-// 🔹 Required fields for validation
+// Required fields for validation
 const requiredFields = [
   "id", "division_name", "tablet_id", "profile_id", "profile_name",
   "kitchen_id", "kitchen_name", "region_id", "region_name",
@@ -74,7 +72,7 @@ apis.forEach((api) => {
     expect(response.status).toBe(200);
     const json = JSON.parse(response.body);
 
-    // ✅ Validate required fields are present before saving
+    // Validate required fields are present before saving
     if (json.wastes && Array.isArray(json.wastes)) {
       json.wastes.forEach((waste, index) => {
         requiredFields.forEach((field) => {
@@ -93,11 +91,11 @@ apis.forEach((api) => {
     expect(live.status).toBe(200);
     const liveJson = JSON.parse(live.body);
 
-    // ✅ Validate wastes length matches
+    // Validate wastes length matches
     expect(Array.isArray(liveJson.wastes)).toBe(true);
     expect(liveJson.wastes.length).toBe(saved.wastes.length);
 
-    // ✅ Compare each required field value with saved response
+    // Compare each required field value with saved response
     liveJson.wastes.forEach((waste, index) => {
       const savedWaste = saved.wastes[index];
       requiredFields.forEach((field) => {

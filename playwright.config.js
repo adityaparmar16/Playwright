@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
+  timeout: 90000,
   testDir: './tests',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -27,13 +28,8 @@ export default defineConfig({
   ],
 
   // custom DB metadata
-  // custom env variables for DBs (like Cypress env)
+  // custom env variables for DBs
   metadata: {
-    db: {
-      host: "rds-dev-newput.bamco.internal",
-      user: "user_newput_sonam",
-      password: "SjEys0Evx87UrgAuezP4VfF18flgEjA0701Z0n+JnqI=",
-    },
     dbproduction: {
       host: "rds-production.bamco.internal",
       user: "user_newput_aditya",
@@ -41,6 +37,16 @@ export default defineConfig({
     },
     dbdev: {
       host: "rds-dev.bamco.internal",
+      user: "user_newput_aditya",
+      password: "sDDAn7Qg4u4CG5",
+    },
+    globaldev: {
+      host: "wastenot-rds-dev.bamco.internal",
+      user: "user_newput_aditya",
+      password: "sDDAn7Qg4u4CG5",
+    },
+    globalprod: {
+      host: "wastenot-rds-production.bamco.internal",
       user: "user_newput_aditya",
       password: "sDDAn7Qg4u4CG5",
     }

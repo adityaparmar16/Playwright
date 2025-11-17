@@ -5,3 +5,9 @@ node_modules/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+utils/.DS_Store
+tests/.DS_Store
+tests/downloads/
+.DS_Store
+tests/WNT/.DS_Store
+downloads/

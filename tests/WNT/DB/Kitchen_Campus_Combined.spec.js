@@ -16,15 +16,7 @@ function convertToCSV(queryResult) {
 
 // List of kitchen IDs-campus IDs
 const kitchenCampusMap = {
-  '7735': 'C-7967',
-  '7218': 'C-7967',
-  '7858': 'C-7967',
-  '7713': 'C-7967',
-  '7840': 'C-7967',
-  '5046': 'C-58410',
-  '5376': 'C-58410',
-  '6251': 'C-58410',
-  '6285': 'C-58410'
+  '5376': 'C-58410'
 };
 
 // Campus IDs to check only for absence of data

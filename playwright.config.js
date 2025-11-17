@@ -35,10 +35,20 @@ export default defineConfig({
       user: "user_newput_aditya",
       password: "sDDAn7Qg4u4CG5",
     },
+    dbproductionWrite: {
+      host: "rds-production.bamco.internal",
+      user: "user_newput_aditya",
+      password: "sDDAn7Qg4u4CG5",
+    },
     dbdev: {
       host: "rds-dev.bamco.internal",
       user: "user_newput_aditya",
       password: "sDDAn7Qg4u4CG5",
+    },
+    dbdevWrite: {
+      host: "rds-dev.bamco.internal",
+      user: "user_newput_mansi",
+      password: "+Oba4j+cPIqtA7t7k+xtbU8taz6E7DhcnIsVbDnpWmI=",
     },
     globaldev: {
       host: "wastenot-rds-dev.bamco.internal",

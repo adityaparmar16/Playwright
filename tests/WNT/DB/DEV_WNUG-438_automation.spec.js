@@ -61,6 +61,7 @@ const expectedComplexMap = {
   '7480': 'C-65066',
   '7540': 'C-65066',
   '7542': 'C-61177',
+  '3683': 'C-12967',
   '3786': 'C-12967',
   '4852': 'C-63572'
 };
@@ -88,12 +89,13 @@ const oldCampusMap = {
   '5522': 'C-18500',
   '5112': 'C-1815',
   '4849': 'C-61823',
-  '7542': null, // special: != expected complex
+  '7542': null, // != expected complex
+  '3683': 'C-55323',
   '3786': 'C-40346',
   '4852': 'C-61823'
 };
 
-// Summary tracking
+//Summary tracking
 const summary = {
   updated: [],
   skippedNoRows: [],
@@ -113,17 +115,17 @@ test.describe('WNUG-438 bulk campus corrections', () => {
 
         const oldCampusId = oldCampusMap[kitchenId];
 
-        // Build initial SELECT
+        //initial SELECT
         let selectQuery;
         if (kitchenId === '7542') {
           selectQuery = `
-            SELECT * FROM cafebonappetit.ot_tablet_profile
+            SELECT * FROM cafemanager.ot_tablet_profile
             WHERE kitchen_id='${kitchenId}' AND campus_id != '${expectedComplexId}'
             ORDER BY created_at DESC;
           `;
         } else {
           selectQuery = `
-            SELECT * FROM cafebonappetit.ot_tablet_profile
+            SELECT * FROM cafemanager.ot_tablet_profile
             WHERE campus_id='${oldCampusId}' AND kitchen_id='${kitchenId}'
             ORDER BY created_at DESC;
           `;
@@ -142,7 +144,7 @@ test.describe('WNUG-438 bulk campus corrections', () => {
 
         //Validate ot_kitchen
         const kitchenQuery = `
-          SELECT * FROM cafebonappetit.ot_kitchen WHERE id='${kitchenId}';
+          SELECT * FROM cafemanager.ot_kitchen WHERE id='${kitchenId}';
         `;
         const kitchenRows = await queryDatabase(kitchenQuery, dbConfig);
         fs.writeFileSync(path.join(resultsDir, `kitchen_${kitchenId}_${timestamp}.csv`), convertToCSV(kitchenRows));
@@ -161,7 +163,7 @@ test.describe('WNUG-438 bulk campus corrections', () => {
           return;
         }
 
-        // 3) Perform UPDATE
+        //Perform UPDATE
         const newAppDate = getAppDateDaysAhead(2, '10:00:08');
 
         let updateWhere;
@@ -172,7 +174,7 @@ test.describe('WNUG-438 bulk campus corrections', () => {
         }
 
         const updateQuery = `
-          UPDATE cafebonappetit.ot_tablet_profile
+          UPDATE cafemanager.ot_tablet_profile
           SET campus_id='${expectedComplexId}', app_date='${newAppDate}'
           WHERE ${updateWhere};
         `;
@@ -181,10 +183,10 @@ test.describe('WNUG-438 bulk campus corrections', () => {
 
         summary.updated.push({ kitchenId, updateResult });
 
-        // 4) Confirmation SELECT
+        //Confirmation SELECT
         const confirmQuery = `
           SELECT *
-          FROM cafebonappetit.ot_tablet_profile
+          FROM cafemanager.ot_tablet_profile
           WHERE campus_id='${expectedComplexId}' AND kitchen_id='${kitchenId}'
           ORDER BY created_at DESC;
         `;
@@ -203,7 +205,7 @@ test.describe('WNUG-438 bulk campus corrections', () => {
     });
   }
 
-  // SUMMARY
+  //SUMMARY
   test.afterAll(() => {
     console.log('\n=== FINAL SUMMARY ===');
     console.log('Updated:', summary.updated.map(x => x.kitchenId).join(', ') || 'None');

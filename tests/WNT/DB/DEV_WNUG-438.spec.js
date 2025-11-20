@@ -38,6 +38,7 @@ const kitchenCampusMap = {
   '7480': 'C-65066',
   '7540': 'C-65066',
   '7542': 'C-61177',
+  '3683': 'C-12967',
   '3786': 'C-12967',
   '4852': 'C-63572'
 };
@@ -51,7 +52,7 @@ test.describe('Monday-specific_WNUG-438', () => {
       const result = await queryDatabase(
         `
           SELECT * 
-          FROM cafebonappetit.ot_tablet_profile 
+          FROM cafemanager.ot_tablet_profile 
           WHERE kitchen_id='${kitchenId}' 
           ORDER BY created_at DESC;
         `,

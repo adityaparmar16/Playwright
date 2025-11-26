@@ -52,7 +52,7 @@ test.describe('Monday-specific_WNUG-438', () => {
       const result = await queryDatabase(
         `
           SELECT * 
-          FROM cafemanager.ot_tablet_profile 
+          FROM cafebonappetit.ot_tablet_profile 
           WHERE kitchen_id='${kitchenId}' 
           ORDER BY created_at DESC;
         `,

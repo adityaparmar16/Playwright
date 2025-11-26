@@ -63,7 +63,8 @@ const expectedComplexMap = {
   '7542': 'C-61177',
   '3683': 'C-12967',
   '3786': 'C-12967',
-  '4852': 'C-63572'
+  '4852': 'C-63572',
+  '5376': 'C-58410',
 };
 
 // Old campus values for initial SELECT
@@ -92,7 +93,8 @@ const oldCampusMap = {
   '7542': null, // special: != expected complex
   '3683': 'C-55323',
   '3786': 'C-40346',
-  '4852': 'C-61823'
+  '4852': 'C-61823',
+  '5376': 'C-7967'
 };
 
 // Summary tracking

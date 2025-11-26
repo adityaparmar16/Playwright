@@ -37,8 +37,8 @@ export default defineConfig({
     },
     dbproductionWrite: {
       host: "rds-production.bamco.internal",
-      user: "user_newput_aditya",
-      password: "sDDAn7Qg4u4CG5",
+      user: "user_newput_mansi",
+      password: "+Oba4j+cPIqtA7t7k+xtbU8taz6E7DhcnIsVbDnpWmI=",
     },
     dbdev: {
       host: "rds-cafemanager-dev.bamco.internal",

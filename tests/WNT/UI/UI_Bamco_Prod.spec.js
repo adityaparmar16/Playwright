@@ -18,8 +18,8 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
         await expect(page.getByRole('link', { name: 'New User?' })).toBeVisible();
         await expect(page.getByRole('link', { name: 'Forgot Password?' })).toBeVisible();
 
-        await page.locator('input[name="emanresu"]').pressSequentially('99063285', { delay: 500 });
-        await page.locator('input[name="drowssap"]').pressSequentially('Adi16@bamco', { delay: 500 });
+        await page.locator('input[name="emanresu"]').pressSequentially('99063285', { delay: 50 });
+        await page.locator('input[name="drowssap"]').pressSequentially('Adi16@bamco', { delay: 50 });
 
         await page.getByRole('button', { name: 'log in' }).click();
     });
@@ -137,7 +137,7 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
           WITH plate_only_days AS (
               SELECT DATE(created_at) AS waste_date
               FROM ot_tablet_profile
-              WHERE created_at BETWEEN '2025-05-01 00:00:00' AND '2025-10-31 23:59:59'
+              WHERE created_at BETWEEN '2025-06-01 00:00:00' AND '2025-11-30 23:59:59'
                 AND campus_id = '${campusId}'
               GROUP BY DATE(created_at)
               HAVING COUNT(DISTINCT kind_of_waste) = 1
@@ -151,7 +151,7 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
                   lbs_waste
               FROM ot_tablet_profile
               WHERE kind_of_waste != 'plate_waste'
-                AND created_at BETWEEN '2025-05-01 00:00:00' AND '2025-10-31 23:59:59'
+                AND created_at BETWEEN '2025-06-01 00:00:00' AND '2025-11-30 23:59:59'
                 AND campus_id = '${campusId}'
                 AND DATE(created_at) NOT IN (SELECT waste_date FROM plate_only_days)
           ),
@@ -185,7 +185,7 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
           WITH plate_only_days AS (
               SELECT DATE(created_at) AS waste_date
               FROM ot_tablet_profile
-              WHERE created_at BETWEEN '2025-11-01 00:00:00' AND '2025-11-30 23:59:59'
+              WHERE created_at BETWEEN '2025-12-01 00:00:00' AND '2025-12-31 23:59:59'
                 AND campus_id = '${campusId}'
               GROUP BY DATE(created_at)
               HAVING COUNT(DISTINCT kind_of_waste) = 1
@@ -197,7 +197,7 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
               SUM(lbs_waste) / COUNT(DISTINCT DATE(created_at)) AS avg_lbs_per_day
           FROM ot_tablet_profile
           WHERE kind_of_waste != 'plate_waste'
-            AND created_at BETWEEN '2025-11-01 00:00:00' AND '2025-11-30 23:59:59'
+            AND created_at BETWEEN '2025-12-01 00:00:00' AND '2025-12-31 23:59:59'
             AND campus_id = '${campusId}'
             AND DATE(created_at) NOT IN (SELECT waste_date FROM plate_only_days);
         `;
@@ -206,7 +206,7 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
           WITH plate_only_days AS (
               SELECT DATE(created_at) AS waste_date
               FROM ot_tablet_profile
-              WHERE created_at BETWEEN '2024-11-01 00:00:00' AND '2024-11-30 23:59:59'
+              WHERE created_at BETWEEN '2024-12-01 00:00:00' AND '2024-12-31 23:59:59'
                 AND campus_id = '${campusId}'
               GROUP BY DATE(created_at)
               HAVING COUNT(DISTINCT kind_of_waste) = 1
@@ -218,7 +218,7 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
               SUM(lbs_waste) / COUNT(DISTINCT DATE(created_at)) AS avg_lbs_per_day
           FROM ot_tablet_profile
           WHERE kind_of_waste != 'plate_waste'
-            AND created_at BETWEEN '2024-11-01 00:00:00' AND '2024-11-30 23:59:59'
+            AND created_at BETWEEN '2024-12-01 00:00:00' AND '2024-12-31 23:59:59'
             AND campus_id = '${campusId}'
             AND DATE(created_at) NOT IN (SELECT waste_date FROM plate_only_days);
         `;

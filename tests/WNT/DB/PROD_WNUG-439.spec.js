@@ -53,8 +53,8 @@ test.describe('Manual Date Range Duplicate Records Check (with update)', () => {
     if (!dbConfig) throw new Error('DB config not found: metadata.dbdev');
 
     // MANUALLY SET START & END DATE HERE (unchanged)
-    const startDate = '2025-11-24 00:00:00';
-    const endDate   = '2025-11-30 23:59:59';
+    const startDate = '2025-12-08 00:00:00';
+    const endDate   = '2025-12-14 23:59:59';
 
     // 1) Run GROUP_CONCAT duplicate detection query
     const groupSql = `

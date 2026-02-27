@@ -8,9 +8,9 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
         // Pick dev DB config
         dbConfig = {
             ...testInfo.config.metadata.dbproduction,
-            database: 'cafebonappetit'
+            database: 'cafemanager'
         };
-        console.log('DB config set to prod (cafebonappetit)');
+        console.log('DB config set to prod (cafemanager)');
 
         await page.goto('https://legacy.cafebonappetit.com/cafemanager/login');
 
@@ -79,7 +79,7 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
 
         //CAMPUS LEVEL 
         console.log('Starting CAMPUS level selection...');
-        const campusName = 'OpenAI Mission Bay 2';
+        const campusName = 'Amazon AWS';
         await page.getByRole('button', { name: 'All Campuses' }).click();
         console.log('Clicked All Campuses button');
         await page.getByRole('textbox', { name: 'Search' }).fill(campusName);
@@ -137,7 +137,7 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
           WITH plate_only_days AS (
               SELECT DATE(created_at) AS waste_date
               FROM ot_tablet_profile
-              WHERE created_at BETWEEN '2025-06-01 00:00:00' AND '2025-11-30 23:59:59'
+              WHERE created_at BETWEEN '2025-09-01 00:00:00' AND '2026-02-28 23:59:59'
                 AND campus_id = '${campusId}'
               GROUP BY DATE(created_at)
               HAVING COUNT(DISTINCT kind_of_waste) = 1
@@ -151,7 +151,7 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
                   lbs_waste
               FROM ot_tablet_profile
               WHERE kind_of_waste != 'plate_waste'
-                AND created_at BETWEEN '2025-06-01 00:00:00' AND '2025-11-30 23:59:59'
+                AND created_at BETWEEN '2025-09-01 00:00:00' AND '2026-02-28 23:59:59'
                 AND campus_id = '${campusId}'
                 AND DATE(created_at) NOT IN (SELECT waste_date FROM plate_only_days)
           ),
@@ -185,7 +185,7 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
           WITH plate_only_days AS (
               SELECT DATE(created_at) AS waste_date
               FROM ot_tablet_profile
-              WHERE created_at BETWEEN '2025-12-01 00:00:00' AND '2025-12-31 23:59:59'
+              WHERE created_at BETWEEN '2026-03-01 00:00:00' AND '2026-03-31 23:59:59'
                 AND campus_id = '${campusId}'
               GROUP BY DATE(created_at)
               HAVING COUNT(DISTINCT kind_of_waste) = 1
@@ -197,7 +197,7 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
               SUM(lbs_waste) / COUNT(DISTINCT DATE(created_at)) AS avg_lbs_per_day
           FROM ot_tablet_profile
           WHERE kind_of_waste != 'plate_waste'
-            AND created_at BETWEEN '2025-12-01 00:00:00' AND '2025-12-31 23:59:59'
+            AND created_at BETWEEN '2026-03-01 00:00:00' AND '2026-03-31 23:59:59'
             AND campus_id = '${campusId}'
             AND DATE(created_at) NOT IN (SELECT waste_date FROM plate_only_days);
         `;
@@ -206,7 +206,7 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
           WITH plate_only_days AS (
               SELECT DATE(created_at) AS waste_date
               FROM ot_tablet_profile
-              WHERE created_at BETWEEN '2024-12-01 00:00:00' AND '2024-12-31 23:59:59'
+              WHERE created_at BETWEEN '2025-03-01 00:00:00' AND '2025-03-31 23:59:59'
                 AND campus_id = '${campusId}'
               GROUP BY DATE(created_at)
               HAVING COUNT(DISTINCT kind_of_waste) = 1
@@ -218,7 +218,7 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
               SUM(lbs_waste) / COUNT(DISTINCT DATE(created_at)) AS avg_lbs_per_day
           FROM ot_tablet_profile
           WHERE kind_of_waste != 'plate_waste'
-            AND created_at BETWEEN '2024-12-01 00:00:00' AND '2024-12-31 23:59:59'
+            AND created_at BETWEEN '2025-03-01 00:00:00' AND '2025-03-31 23:59:59'
             AND campus_id = '${campusId}'
             AND DATE(created_at) NOT IN (SELECT waste_date FROM plate_only_days);
         `;

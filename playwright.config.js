@@ -31,12 +31,12 @@ export default defineConfig({
   // custom env variables for DBs
   metadata: {
     dbproduction: {
-      host: "rds-production.bamco.internal",
+      host: "rds-cafemanager-prod.bamco.internal",
       user: "user_newput_aditya",
       password: "sDDAn7Qg4u4CG5",
     },
     dbproductionWrite: {
-      host: "rds-production.bamco.internal",
+      host: "rds-cafemanager-prod.bamco.internal",
       user: "user_newput_mansi",
       password: "+Oba4j+cPIqtA7t7k+xtbU8taz6E7DhcnIsVbDnpWmI=",
     },

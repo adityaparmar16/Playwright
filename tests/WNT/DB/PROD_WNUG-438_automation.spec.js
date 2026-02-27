@@ -115,13 +115,13 @@ test.describe('WNUG-438 bulk campus corrections', () => {
         let selectQuery;
         if (kitchenId === '7542') {
           selectQuery = `
-            SELECT * FROM cafebonappetit.ot_tablet_profile
+            SELECT * FROM cafemanager.ot_tablet_profile
             WHERE kitchen_id='${kitchenId}' AND campus_id != '${expectedComplexId}'
             ORDER BY created_at DESC;
           `;
         } else {
           selectQuery = `
-            SELECT * FROM cafebonappetit.ot_tablet_profile
+            SELECT * FROM cafemanager.ot_tablet_profile
             WHERE campus_id='${oldCampusId}' AND kitchen_id='${kitchenId}'
             ORDER BY created_at DESC;
           `;
@@ -140,7 +140,7 @@ test.describe('WNUG-438 bulk campus corrections', () => {
 
         // 2) Validate ot_kitchen
         const kitchenQuery = `
-          SELECT * FROM cafebonappetit.ot_kitchen WHERE id='${kitchenId}';
+          SELECT * FROM cafemanager.ot_kitchen WHERE id='${kitchenId}';
         `;
         const kitchenRows = await queryDatabase(kitchenQuery, dbConfig);
         fs.writeFileSync(path.join(resultsDir, `kitchen_${kitchenId}_${timestamp}.csv`), convertToCSV(kitchenRows));
@@ -170,7 +170,7 @@ test.describe('WNUG-438 bulk campus corrections', () => {
         }
 
         const updateQuery = `
-          UPDATE cafebonappetit.ot_tablet_profile
+          UPDATE cafemanager.ot_tablet_profile
           SET campus_id='${expectedComplexId}', app_date='${newAppDate}'
           WHERE ${updateWhere};
         `;
@@ -182,7 +182,7 @@ test.describe('WNUG-438 bulk campus corrections', () => {
         // 4) Confirmation SELECT
         const confirmQuery = `
           SELECT *
-          FROM cafebonappetit.ot_tablet_profile
+          FROM cafemanager.ot_tablet_profile
           WHERE campus_id='${expectedComplexId}' AND kitchen_id='${kitchenId}'
           ORDER BY created_at DESC;
         `;

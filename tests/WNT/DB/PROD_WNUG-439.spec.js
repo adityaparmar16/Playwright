@@ -53,8 +53,8 @@ test.describe('Manual Date Range Duplicate Records Check (with update)', () => {
     if (!dbConfig) throw new Error('DB config not found: metadata.dbdev');
 
     // MANUALLY SET START & END DATE HERE (unchanged)
-    const startDate = '2025-12-08 00:00:00';
-    const endDate   = '2025-12-14 23:59:59';
+    const startDate = '2026-03-01 00:00:00';
+    const endDate   = '2026-03-31 23:59:59';
 
     // 1) Run GROUP_CONCAT duplicate detection query
     const groupSql = `
@@ -72,7 +72,7 @@ test.describe('Manual Date Range Duplicate Records Check (with update)', () => {
         waste_destination,
         container_type,
         app_date
-      FROM cafebonappetit.ot_tablet_profile
+      FROM cafemanager.ot_tablet_profile
       GROUP BY tablet_id, profile_id, campus_id, kitchen_id, created_at, kind_of_waste,
                lbs_waste, waste_destination, container_type
       HAVING total > 1
@@ -124,7 +124,7 @@ test.describe('Manual Date Range Duplicate Records Check (with update)', () => {
 
     // 4) Run UPDATE for all duplicate ids
     const updateSql = `
-      UPDATE cafebonappetit.ot_tablet_profile
+      UPDATE cafemanager.ot_tablet_profile
       SET lbs_waste = '0.00 lbs',
           container_fill_level = 0,
           app_date = '${appDateStr}'
@@ -145,7 +145,7 @@ test.describe('Manual Date Range Duplicate Records Check (with update)', () => {
     // 5) Select updated rows for verification and save CSV
     const selectUpdatedSql = `
       SELECT *
-      FROM cafebonappetit.ot_tablet_profile
+      FROM cafemanager.ot_tablet_profile
       WHERE id IN (${formattedIds});
     `;
 

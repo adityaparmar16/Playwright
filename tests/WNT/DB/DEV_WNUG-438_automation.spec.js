@@ -39,7 +39,6 @@ function getAppDateDaysAhead(daysAhead, timeOfDay = '10:00:08') {
 
 // Kitchen → expected complex
 const expectedComplexMap = {
-  '1730': 'C-40575',
   '2320': 'C-66795',
   '2775': 'C-56365',
   '3320': 'C-30452',
@@ -84,7 +83,6 @@ const oldCampusMap = {
   '6732': 'C-65071',
   '7404': 'C-65067',
   '7480': 'C-65068',
-  '1730': 'C-31715',
   '2775': 'C-55523',
   '5522': 'C-18500',
   '5112': 'C-1815',

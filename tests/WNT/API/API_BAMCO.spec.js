@@ -19,6 +19,8 @@ const startDate = formatDate(oneYearAgo);
 const endDate = formatDate(yesterday);
 
 const BASE_URL = "https://cafemanager-api.cafebonappetit.com/api/wastenot";
+//const BASE_URL = "https://cafemanager.dev.bamcotest.com/api/wastenot";
+//const BASE_URL = "https://cafemanager.staging.bamcotest.com/api/wastenot";
 
 // Utility: pick N random items
 function getRandomItems(array, n) {

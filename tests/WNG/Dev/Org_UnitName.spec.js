@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { queryDatabase } from '../../utils/db';
+import { queryDatabase } from '../../../utils/db';
 
 test.describe('Dashboard Validation', () => {
   let dbConfig;
@@ -7,28 +7,27 @@ test.describe('Dashboard Validation', () => {
   test.beforeEach(async ({ page }, testInfo) => {
     // Pick dev DB config
     dbConfig = {
-      ...testInfo.config.metadata.globalprod,
+      ...testInfo.config.metadata.globaldev,
       database: 'wastenotglobal'
     };
     console.log('DB config set to dev (wastenotglobal)');
 
-    await page.goto('https://www.wastenotglobal.com/login');
+    await page.goto('https://wastenotglobal.dev.eu.bamcotest.com/login');
     await expect(page.getByRole('img', { name: 'waste-not-2.0-logo' })).toBeVisible();
     await expect(page.getByText('LOG INTO WASTE NOT')).toBeVisible();
 
-    await page.getByRole('textbox', { name: 'Login email' }).pressSequentially('aditya.parmar@ccube.com', { delay: 100 });
-    await page.getByRole('textbox', { name: 'Password' }).pressSequentially('Aditya16@p', { delay: 100 });
+    await page.getByRole('textbox', { name: 'Login email' }).pressSequentially('aditya_shree@mailinator.com', { delay: 100 });
+    await page.getByRole('textbox', { name: 'Password' }).pressSequentially('Aditya@global2', { delay: 100 });
     await page.getByRole('button', { name: 'Log in' }).click();
   });
 
   test('Validate Dashboard DB vs UI', async ({ page }) => {
     await page.waitForTimeout(5000);
-    await expect(page.getByText('GLOBAL ADMIN', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Analytics Dashboard View' }).click();
+    await page.getByRole('button', { name: 'Analytics Dashboard' }).click();
     await page.waitForTimeout(8000);
 
     // Select Unit
-    const unitName = 'AgeCare Walden Heights'; // dynamic unit name
+    const unitName = 'abbb'; // dynamic unit name
     await page.getByRole('button', { name: 'Select a Unit' }).click();
     await page.getByRole('textbox', { name: 'Search' }).pressSequentially(unitName, { delay: 100 });
     await page.getByText(`${unitName}`).click();
@@ -90,7 +89,7 @@ test.describe('Dashboard Validation', () => {
           SUM(calculated_amount) / COUNT(DISTINCT DATE(created_date_gmt)) AS avg_lbs_per_day
       FROM waste_records
       WHERE kind_of_waste != 5
-        AND created_date_gmt BETWEEN '2026-03-01 00:00:00' AND '2026-03-31 23:59:59'
+        AND created_date_gmt BETWEEN '2026-04-01 00:00:00' AND '2026-04-30 23:59:59'
         AND entity_unit_id = ${entityUnitId};
     `;
 
@@ -103,7 +102,7 @@ test.describe('Dashboard Validation', () => {
               calculated_amount
           FROM waste_records
           WHERE kind_of_waste != 5
-            AND created_date_gmt BETWEEN '2025-09-01 00:00:00' AND '2026-02-28 23:59:59'
+            AND created_date_gmt BETWEEN '2025-10-01 00:00:00' AND '2026-03-31 23:59:59'
             AND entity_unit_id = ${entityUnitId}
       ),
       MonthlyAverages AS (
@@ -130,7 +129,7 @@ test.describe('Dashboard Validation', () => {
           SUM(calculated_amount) / COUNT(DISTINCT DATE(created_date_gmt)) AS avg_lbs_per_day
       FROM waste_records
       WHERE kind_of_waste != 5
-        AND created_date_gmt BETWEEN '2025-03-01 00:00:00' AND '2025-03-31 23:59:59'
+        AND created_date_gmt BETWEEN '2025-04-01 00:00:00' AND '2025-04-30 23:59:59'
         AND entity_unit_id = ${entityUnitId};
     `;
 
@@ -157,38 +156,130 @@ test.describe('Dashboard Validation', () => {
       // Clean up whitespace/newlines
       labels = labels.map(label => label.replace(/\s+/g, ' ').trim());
 
-      console.log('UI Chart Labels (clean):', labels);
-
       return labels.some(label => label.includes(expectedValue.toString()));
     }
 
-
     // ---------- ASSERTIONS ----------
-    if (dbPast6Months) {
-      const exists = await checkValueInChartLabels(dbPast6Months);
-      if (exists) {
-        console.log(`Past 6 Months verified in UI: ${dbPast6Months} lbs`);
-      } else {
-        console.warn(`Past 6 Months (${dbPast6Months} lbs) not visible in UI`);
+    const dbValues = {
+      "Past 6 Months": dbPast6Months,
+      "Current Month": dbCurrentMonth,
+      "Last Year": dbLastYear
+    };
+
+    for (const [label, value] of Object.entries(dbValues)) {
+      if (value) {
+        const exists = await checkValueInChartLabels(value);
+
+        if (exists) {
+          console.log(`${label} verified in UI: ${value} lbs`);
+        } else {
+          console.warn(`${label} (${value} lbs) not visible in UI`);
+        }
       }
+    }
+    const emailId = 'aditya.parmar@ccube.com';
+
+    const schedules = [
+      { type: 'Everyday', timezone: 'Central European Standard Time' },
+      { type: 'Weekly', day: 'Monday', timezone: 'Central European Standard Time' },
+      { type: 'Weekly', day: 'Wednesday', timezone: 'Eastern Standard Time' },
+    ];
+
+    const toTextbox = page.getByRole('textbox', { name: 'To*' });
+
+    async function openReportsAndFillEmail() {
+      const reportsBtn = page.getByRole('button', { name: 'REPORTS', exact: true });
+      await reportsBtn.waitFor({ state: 'visible' });
+      await reportsBtn.click();
+
+      await expect(toTextbox).toBeVisible();
+
+      await toTextbox.click();
+      await toTextbox.fill(''); // clear instead of Ctrl+A
+      await toTextbox.fill(emailId);
+
+      const nowBtn = page.getByRole('button', { name: 'now', exact: true });
+      await nowBtn.waitFor({ state: 'visible' });
+      await nowBtn.click();
+
+      const scheduleBtn = page.getByRole('button', { name: 'schedule', exact: true });
+      await scheduleBtn.waitFor({ state: 'visible' });
+      await scheduleBtn.click();
     }
 
-    if (dbCurrentMonth) {
-      const exists = await checkValueInChartLabels(dbCurrentMonth);
-      if (exists) {
-        console.log(`Current Month verified in UI: ${dbCurrentMonth} lbs`);
-      } else {
-        console.warn(`Current Month (${dbCurrentMonth} lbs) not visible in UI`);
-      }
+    async function selectTimezone(zone) {
+      const timezoneDropdown = page.getByRole('button', { name: 'Select a timezone' });
+      await timezoneDropdown.waitFor({ state: 'visible' });
+      await timezoneDropdown.click();
+
+      const zoneOption = page.getByRole('button', { name: zone });
+      await zoneOption.waitFor({ state: 'visible' });
+      await zoneOption.click();
     }
 
-    if (dbLastYear) {
-      const exists = await checkValueInChartLabels(dbLastYear);
-      if (exists) {
-        console.log(`Last Year verified in UI: ${dbLastYear} lbs`);
-      } else {
-        console.warn(`Last Year (${dbLastYear} lbs) not visible in UI`);
-      }
+    async function createSchedule() {
+      const createBtn = page.getByRole('button', { name: 'Create' }).nth(1);
+      await createBtn.waitFor({ state: 'visible' });
+      await createBtn.click();
+
+      const alert = page.getByRole('alert');
+      await expect(alert).toBeVisible();
+      console.log('Toast/Alert Message:', await alert.innerText());
     }
+
+    for (const schedule of schedules) {
+      await openReportsAndFillEmail();
+
+      if (schedule.type === 'Everyday') {
+        const everydayRadio = page.getByRole('radio', { name: 'Everyday' });
+        await everydayRadio.waitFor({ state: 'visible' });
+        await everydayRadio.check();
+      }
+
+      if (schedule.type === 'Weekly') {
+        const weeklyRadio = page.getByRole('radio', { name: 'Weekly' });
+        await weeklyRadio.waitFor({ state: 'visible' });
+        await weeklyRadio.check();
+
+        const recurDropdown = page.locator('div')
+          .filter({ hasText: /^Recur Every Week\(s\)Select one day of the week$/ })
+          .locator('i')
+          .nth(1);
+
+        await recurDropdown.waitFor({ state: 'visible' });
+        await recurDropdown.click();
+
+        const dropdownBtn = page.getByRole('button').filter({ hasText: /^$/ });
+        await dropdownBtn.first().click();
+
+        const oneOption = page.getByRole('button', { name: '1', exact: true });
+        await oneOption.waitFor({ state: 'visible' });
+        await oneOption.click();
+
+        const dayRadio = page.getByRole('radio', { name: schedule.day });
+        await dayRadio.waitFor({ state: 'visible' });
+        await dayRadio.check();
+      }
+
+      await selectTimezone(schedule.timezone);
+      await createSchedule();
+    }
+
+    // Send Now flow
+    const reportsBtn = page.getByRole('button', { name: 'REPORTS', exact: true });
+    await reportsBtn.click();
+
+    await expect(toTextbox).toBeVisible();
+    await toTextbox.click();
+    await toTextbox.fill('');
+    await toTextbox.fill(emailId);
+
+    const sendNowBtn = page.getByRole('button', { name: 'Send Now' });
+    await sendNowBtn.waitFor({ state: 'visible' });
+    await sendNowBtn.click();
+
+    const alert = page.getByRole('alert');
+    await expect(alert).toBeVisible();
+
   });
 });

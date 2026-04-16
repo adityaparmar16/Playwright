@@ -3,6 +3,8 @@ import fs from "fs";
 import { fetchAuth } from "../../../utils/apiHelper.js";
 
 const BASE_URL = "https://cafemanager-api.cafebonappetit.com/api/wastenot";
+//const BASE_URL = "https://cafemanager.dev.bamcotest.com/api/wastenot";
+//const BASE_URL = "https://cafemanager.staging.bamcotest.com/api/wastenot";
 
 // Utility to format dates
 function formatDate(date) {
@@ -43,11 +45,11 @@ const RANDOM_SAMPLE_COUNT = 5;
 
 const apis = [
   { name: "compass", url: `${BASE_URL}?compass&start=${start}&limit=1000&end=${end}` },
-  { name: "complex", url: `${BASE_URL}?complex=C-39043&start=${start}&limit=1000&end=${end}` },
-  { name: "district", url: `${BASE_URL}?district=FAJ07&start=${start}&limit=1000&end=${end}` },
-  { name: "region", url: `${BASE_URL}?region=VCS000&start=${start}&limit=1000&end=${end}` },
-  { name: "division", url: `${BASE_URL}?division=VS0000&start=${start}&limit=1000&end=${end}` },
-  { name: "sector", url: `${BASE_URL}?sector=F00000,L00000&start=${start}&limit=1000&end=${end}` },
+  { name: "complex", url: `${BASE_URL}?complex=C-27833&start=${start}&limit=1000&end=${end}` },
+  { name: "district", url: `${BASE_URL}?district=CKH16&start=${start}&limit=1000&end=${end}` },
+  { name: "region", url: `${BASE_URL}?region=CKH000&start=${start}&limit=1000&end=${end}` },
+  { name: "division", url: `${BASE_URL}?division=CK0000&start=${start}&limit=1000&end=${end}` },
+  { name: "sector", url: `${BASE_URL}?sector=F00000,C00000&start=${start}&limit=1000&end=${end}` },
 ];
 
 apis.forEach((api) => {

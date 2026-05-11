@@ -96,56 +96,100 @@ test.describe('Dashboard Validation', () => {
             console.log('No Target value found for this campus, skipping target validation.');
         }
 
+        // ================= DATE RANGES =================
+        const now = new Date();
+
+        // Current Month
+        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        // Past 6 Months (excluding current month)
+        const past6MonthsStart = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+        const past6MonthsEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+        // Same Month Last Year
+        const lastYearStart = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+        const lastYearEnd = new Date(now.getFullYear() - 1, now.getMonth() + 1, 0);
+
+        // Format function
+        const formatDate = (date, isEnd = false) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+
+            return `${year}-${month}-${day} ${isEnd ? '23:59:59' : '00:00:00'}`;
+        };
+
+        // Final formatted dates
+        const currentMonthStartDate = formatDate(currentMonthStart);
+        const currentMonthEndDate = formatDate(currentMonthEnd, true);
+
+        const past6MonthsStartDate = formatDate(past6MonthsStart);
+        const past6MonthsEndDate = formatDate(past6MonthsEnd, true);
+
+        const lastYearStartDate = formatDate(lastYearStart);
+        const lastYearEndDate = formatDate(lastYearEnd, true);
+
+        console.log({
+            currentMonthStartDate,
+            currentMonthEndDate,
+            past6MonthsStartDate,
+            past6MonthsEndDate,
+            lastYearStartDate,
+            lastYearEndDate
+        });
+
         // === Queries ===
+
         const currentMonthQuery = `
-  SELECT
-      SUM(calculated_amount) AS total_calculated_amount,
-      COUNT(DISTINCT DATE(created_date_gmt)) AS total_days,
-      SUM(calculated_amount) / COUNT(DISTINCT DATE(created_date_gmt)) AS avg_lbs_per_day
-  FROM waste_records
-  WHERE kind_of_waste != 5
-    AND created_date_gmt BETWEEN '2026-04-01 00:00:00' AND '2026-04-30 23:59:59'
-    AND entity_unit_id = ${entityUnitId};
+    SELECT
+        SUM(calculated_amount) AS total_calculated_amount,
+        COUNT(DISTINCT DATE(created_date_gmt)) AS total_days,
+        SUM(calculated_amount) / COUNT(DISTINCT DATE(created_date_gmt)) AS avg_lbs_per_day
+    FROM waste_records
+    WHERE kind_of_waste != 5
+      AND created_date_gmt BETWEEN '${currentMonthStartDate}' AND '${currentMonthEndDate}'
+      AND entity_unit_id = ${entityUnitId};
 `;
 
         const past6MonthsQuery = `
-  WITH MonthlyData AS (
-      SELECT
-          EXTRACT(YEAR FROM created_date_gmt) AS year,
-          EXTRACT(MONTH FROM created_date_gmt) AS month,
-          DATE(created_date_gmt) AS day,
-          calculated_amount
-      FROM waste_records
-      WHERE kind_of_waste != 5
-        AND created_date_gmt BETWEEN '2025-10-01 00:00:00' AND '2026-03-31 23:59:59'
-        AND entity_unit_id = ${entityUnitId}
-  ),
-  MonthlyAverages AS (
-      SELECT
-          year,
-          month,
-          SUM(calculated_amount) AS total_calculated_amount,
-          COUNT(DISTINCT day) AS total_days,
-          SUM(calculated_amount) / COUNT(DISTINCT day) AS avg_lbs_per_day
-      FROM MonthlyData
-      GROUP BY year, month
-      HAVING COUNT(DISTINCT day) >= 12
-  )
-  SELECT
-      *,
-      (SELECT AVG(avg_lbs_per_day) FROM MonthlyAverages) AS overall_avg_lbs_per_day
-  FROM MonthlyAverages;
+    WITH MonthlyData AS (
+        SELECT
+            EXTRACT(YEAR FROM created_date_gmt) AS year,
+            EXTRACT(MONTH FROM created_date_gmt) AS month,
+            DATE(created_date_gmt) AS day,
+            calculated_amount
+        FROM waste_records
+        WHERE kind_of_waste != 5
+          AND created_date_gmt BETWEEN '${past6MonthsStartDate}' AND '${past6MonthsEndDate}'
+          AND entity_unit_id = ${entityUnitId}
+    ),
+    MonthlyAverages AS (
+        SELECT
+            year,
+            month,
+            SUM(calculated_amount) AS total_calculated_amount,
+            COUNT(DISTINCT day) AS total_days,
+            SUM(calculated_amount) / COUNT(DISTINCT day) AS avg_lbs_per_day
+        FROM MonthlyData
+        GROUP BY year, month
+        HAVING COUNT(DISTINCT day) >= 12
+    )
+    SELECT
+        *,
+        (SELECT AVG(avg_lbs_per_day) FROM MonthlyAverages) AS overall_avg_lbs_per_day
+    FROM MonthlyAverages;
 `;
 
         const lastYearQuery = `
-  SELECT
-      SUM(calculated_amount) AS total_calculated_amount,
-      COUNT(DISTINCT DATE(created_date_gmt)) AS total_days,
-      SUM(calculated_amount) / COUNT(DISTINCT DATE(created_date_gmt)) AS avg_lbs_per_day
-  FROM waste_records
-  WHERE kind_of_waste != 5
-    AND created_date_gmt BETWEEN '2025-04-01 00:00:00' AND '2025-04-30 23:59:59'
-    AND entity_unit_id = ${entityUnitId};
+    SELECT
+        SUM(calculated_amount) AS total_calculated_amount,
+        COUNT(DISTINCT DATE(created_date_gmt)) AS total_days,
+        SUM(calculated_amount) / COUNT(DISTINCT DATE(created_date_gmt)) AS avg_lbs_per_day
+    FROM waste_records
+    WHERE kind_of_waste != 5
+      AND created_date_gmt BETWEEN '${lastYearStartDate}' AND '${lastYearEndDate}'
+      AND entity_unit_id = ${entityUnitId};
 `;
 
         // ---------- EXECUTE ----------

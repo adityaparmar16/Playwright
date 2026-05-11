@@ -132,96 +132,139 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
             console.log('No Target value found for this campus, skipping target validation.');
         }
 
+        // ================= DATE RANGES =================
+        const now = new Date();
+
+        // Current Month
+        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        // Past 6 Months (excluding current month)
+        const past6MonthsStart = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+        const past6MonthsEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+        // Same Month Last Year
+        const lastYearStart = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+        const lastYearEnd = new Date(now.getFullYear() - 1, now.getMonth() + 1, 0);
+
+        // Format function
+        const formatDate = (date, isEnd = false) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+
+            return `${year}-${month}-${day} ${isEnd ? '23:59:59' : '00:00:00'}`;
+        };
+
+        // Final formatted dates
+        const past6MonthsStartDate = formatDate(past6MonthsStart);
+        const past6MonthsEndDate = formatDate(past6MonthsEnd, true);
+
+        const currentMonthStartDate = formatDate(currentMonthStart);
+        const currentMonthEndDate = formatDate(currentMonthEnd, true);
+
+        const lastYearStartDate = formatDate(lastYearStart);
+        const lastYearEndDate = formatDate(lastYearEnd, true);
+
+        console.log({
+            past6MonthsStartDate,
+            past6MonthsEndDate,
+            currentMonthStartDate,
+            currentMonthEndDate,
+            lastYearStartDate,
+            lastYearEndDate
+        });
+
         //QUERIES
         const past6MonthsQuery = `
-          WITH plate_only_days AS (
-              SELECT DATE(created_at) AS waste_date
-              FROM ot_tablet_profile
-              WHERE created_at BETWEEN '2025-10-01 00:00:00' AND '2026-03-31 23:59:59'
-                AND campus_id = '${campusId}'
-              GROUP BY DATE(created_at)
-              HAVING COUNT(DISTINCT kind_of_waste) = 1
-                 AND MAX(kind_of_waste) = 'plate_waste'
-          ),
-          filtered_data AS (
-              SELECT
-                  EXTRACT(YEAR FROM created_at) AS year,
-                  EXTRACT(MONTH FROM created_at) AS month,
-                  DATE(created_at) AS day,
-                  lbs_waste
-              FROM ot_tablet_profile
-              WHERE kind_of_waste != 'plate_waste'
-                AND created_at BETWEEN '2025-10-01 00:00:00' AND '2026-03-31 23:59:59'
-                AND campus_id = '${campusId}'
-                AND DATE(created_at) NOT IN (SELECT waste_date FROM plate_only_days)
-          ),
-          monthly_aggregates AS (
-              SELECT
-                  year,
-                  month,
-                  SUM(lbs_waste) AS total_lbs_waste,
-                  COUNT(DISTINCT day) AS total_days,
-                  SUM(lbs_waste) / COUNT(DISTINCT day) AS avg_lbs_per_day
-              FROM filtered_data
-              GROUP BY year, month
-              HAVING COUNT(DISTINCT day) >= 12
-          ),
-          overall_totals AS (
-              SELECT
-                  SUM(total_lbs_waste) AS total_lbs,
-                  SUM(total_days) AS total_days,
-                  ROUND(SUM(total_lbs_waste) / SUM(total_days), 2) AS overall_avg_lbs_per_day
-              FROM monthly_aggregates
-          )
-          SELECT
-              m.*,
-              o.overall_avg_lbs_per_day
-          FROM monthly_aggregates m
-          CROSS JOIN overall_totals o
-          ORDER BY m.year, m.month;
-        `;
+    WITH plate_only_days AS (
+        SELECT DATE(created_at) AS waste_date
+        FROM ot_tablet_profile
+        WHERE created_at BETWEEN '${past6MonthsStartDate}' AND '${past6MonthsEndDate}'
+          AND campus_id = '${campusId}'
+        GROUP BY DATE(created_at)
+        HAVING COUNT(DISTINCT kind_of_waste) = 1
+           AND MAX(kind_of_waste) = 'plate_waste'
+    ),
+    filtered_data AS (
+        SELECT
+            EXTRACT(YEAR FROM created_at) AS year,
+            EXTRACT(MONTH FROM created_at) AS month,
+            DATE(created_at) AS day,
+            lbs_waste
+        FROM ot_tablet_profile
+        WHERE kind_of_waste != 'plate_waste'
+          AND created_at BETWEEN '${past6MonthsStartDate}' AND '${past6MonthsEndDate}'
+          AND campus_id = '${campusId}'
+          AND DATE(created_at) NOT IN (SELECT waste_date FROM plate_only_days)
+    ),
+    monthly_aggregates AS (
+        SELECT
+            year,
+            month,
+            SUM(lbs_waste) AS total_lbs_waste,
+            COUNT(DISTINCT day) AS total_days,
+            SUM(lbs_waste) / COUNT(DISTINCT day) AS avg_lbs_per_day
+        FROM filtered_data
+        GROUP BY year, month
+        HAVING COUNT(DISTINCT day) >= 12
+    ),
+    overall_totals AS (
+        SELECT
+            SUM(total_lbs_waste) AS total_lbs,
+            SUM(total_days) AS total_days,
+            ROUND(SUM(total_lbs_waste) / SUM(total_days), 2) AS overall_avg_lbs_per_day
+        FROM monthly_aggregates
+    )
+    SELECT
+        m.*,
+        o.overall_avg_lbs_per_day
+    FROM monthly_aggregates m
+    CROSS JOIN overall_totals o
+    ORDER BY m.year, m.month;
+`;
 
         const currentMonthQuery = `
-          WITH plate_only_days AS (
-              SELECT DATE(created_at) AS waste_date
-              FROM ot_tablet_profile
-              WHERE created_at BETWEEN '2026-04-01 00:00:00' AND '2026-04-30 23:59:59'
-                AND campus_id = '${campusId}'
-              GROUP BY DATE(created_at)
-              HAVING COUNT(DISTINCT kind_of_waste) = 1
-                 AND MAX(kind_of_waste) = 'plate_waste'
-          )
-          SELECT
-              SUM(lbs_waste) AS total_lbs_waste,
-              COUNT(DISTINCT DATE(created_at)) AS total_days,
-              SUM(lbs_waste) / COUNT(DISTINCT DATE(created_at)) AS avg_lbs_per_day
-          FROM ot_tablet_profile
-          WHERE kind_of_waste != 'plate_waste'
-            AND created_at BETWEEN '2026-04-01 00:00:00' AND '2026-04-30 23:59:59'
-            AND campus_id = '${campusId}'
-            AND DATE(created_at) NOT IN (SELECT waste_date FROM plate_only_days);
-        `;
+    WITH plate_only_days AS (
+        SELECT DATE(created_at) AS waste_date
+        FROM ot_tablet_profile
+        WHERE created_at BETWEEN '${currentMonthStartDate}' AND '${currentMonthEndDate}'
+          AND campus_id = '${campusId}'
+        GROUP BY DATE(created_at)
+        HAVING COUNT(DISTINCT kind_of_waste) = 1
+           AND MAX(kind_of_waste) = 'plate_waste'
+    )
+    SELECT
+        SUM(lbs_waste) AS total_lbs_waste,
+        COUNT(DISTINCT DATE(created_at)) AS total_days,
+        SUM(lbs_waste) / COUNT(DISTINCT DATE(created_at)) AS avg_lbs_per_day
+    FROM ot_tablet_profile
+    WHERE kind_of_waste != 'plate_waste'
+      AND created_at BETWEEN '${currentMonthStartDate}' AND '${currentMonthEndDate}'
+      AND campus_id = '${campusId}'
+      AND DATE(created_at) NOT IN (SELECT waste_date FROM plate_only_days);
+`;
 
         const lastYearQuery = `
-          WITH plate_only_days AS (
-              SELECT DATE(created_at) AS waste_date
-              FROM ot_tablet_profile
-              WHERE created_at BETWEEN '2025-04-01 00:00:00' AND '2025-04-30 23:59:59'
-                AND campus_id = '${campusId}'
-              GROUP BY DATE(created_at)
-              HAVING COUNT(DISTINCT kind_of_waste) = 1
-                 AND MAX(kind_of_waste) = 'plate_waste'
-          )
-          SELECT
-              SUM(lbs_waste) AS total_lbs_waste,
-              COUNT(DISTINCT DATE(created_at)) AS total_days,
-              SUM(lbs_waste) / COUNT(DISTINCT DATE(created_at)) AS avg_lbs_per_day
-          FROM ot_tablet_profile
-          WHERE kind_of_waste != 'plate_waste'
-            AND created_at BETWEEN '2025-04-01 00:00:00' AND '2025-04-30 23:59:59'
-            AND campus_id = '${campusId}'
-            AND DATE(created_at) NOT IN (SELECT waste_date FROM plate_only_days);
-        `;
+    WITH plate_only_days AS (
+        SELECT DATE(created_at) AS waste_date
+        FROM ot_tablet_profile
+        WHERE created_at BETWEEN '${lastYearStartDate}' AND '${lastYearEndDate}'
+          AND campus_id = '${campusId}'
+        GROUP BY DATE(created_at)
+        HAVING COUNT(DISTINCT kind_of_waste) = 1
+           AND MAX(kind_of_waste) = 'plate_waste'
+    )
+    SELECT
+        SUM(lbs_waste) AS total_lbs_waste,
+        COUNT(DISTINCT DATE(created_at)) AS total_days,
+        SUM(lbs_waste) / COUNT(DISTINCT DATE(created_at)) AS avg_lbs_per_day
+    FROM ot_tablet_profile
+    WHERE kind_of_waste != 'plate_waste'
+      AND created_at BETWEEN '${lastYearStartDate}' AND '${lastYearEndDate}'
+      AND campus_id = '${campusId}'
+      AND DATE(created_at) NOT IN (SELECT waste_date FROM plate_only_days);
+`;
 
         //DB execution
         const past6MonthsResult = await queryDatabase(past6MonthsQuery, dbConfig);

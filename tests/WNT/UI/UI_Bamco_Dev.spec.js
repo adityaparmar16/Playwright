@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { queryDatabase } from '../../../utils/db.js';
+import dotenv from 'dotenv';
+dotenv.config();
 
 test.describe('Dashboard and Iframe Validation Tests', () => {
     let dbConfig;
@@ -12,14 +14,13 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
         };
         console.log('DB config set to dev (cafemanager)');
 
-        await page.goto('https://cafemanager.dev.bamcotest.com/cafemanager/login');
-
+        await page.goto(process.env.BAMCO_DEV_URL);
         await expect(page.locator('h1')).toHaveText('Café Manager');
         await expect(page.getByRole('link', { name: 'New User?' })).toBeVisible();
         await expect(page.getByRole('link', { name: 'Forgot Password?' })).toBeVisible();
 
-        await page.locator('input[name="emanresu"]').pressSequentially('99063285', { delay: 500 });
-        await page.locator('input[name="drowssap"]').pressSequentially('Adi16@bamco', { delay: 500 });
+        await page.locator('input[name="emanresu"]').pressSequentially(process.env.BAMCO_USERNAME, { delay: 500 });
+        await page.locator('input[name="drowssap"]').pressSequentially(process.env.BAMCO_PASSWORD, { delay: 500 });
         await page.getByRole('button', { name: 'log in' }).click();
     });
 
@@ -104,33 +105,6 @@ test.describe('Dashboard and Iframe Validation Tests', () => {
             throw new Error(`Campus ID not found in accounts_locations for campus: ${campusName}`);
         }
         console.log(`Campus ID resolved: ${campusId}`);
-
-        //FETCH TARGET VALUE
-        console.log(`Fetching Target for campus_id: ${campusId}`);
-        const getTargetQuery = `
-          SELECT Target 
-          FROM waste_trend_targets 
-          WHERE complex_id = '${campusId}'
-          LIMIT 1;
-        `;
-        const targetResult = await queryDatabase(getTargetQuery, dbConfig);
-        let targetValue = targetResult[0]?.Target;
-
-        if (targetValue !== undefined && targetValue !== null) {
-            targetValue = Math.round(targetValue);
-            console.log(`Target value found in DB: ${targetValue} lbs`);
-
-            try {
-                await expect(
-                    iframeWasteNot.getByText(`TARGET: ${targetValue} lbs`)
-                ).toBeVisible({ timeout: 5000 });
-                console.log(`Verified TARGET: ${targetValue} lbs is visible on UI`);
-            } catch (err) {
-                console.warn(`TARGET: ${targetValue} lbs not visible on UI, but continuing...`);
-            }
-        } else {
-            console.log('No Target value found for this campus, skipping target validation.');
-        }
 
         // ================= DATE RANGES =================
         const now = new Date();

@@ -1,10 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { queryDatabase } from '../../../utils/db.js'; // adjust if needed
+import { queryDatabase } from '../../../utils/db.js';
+import dotenv from 'dotenv';
 
-const WASTENOT_URL = 'https://cafemanager.dev.bamcotest.com/cafemanager/wastenot';
+dotenv.config();
 
-const LOGIN_ID = process.env.WASTENOT_LOGIN_ID ?? 'parmaa01';
-const LOGIN_PASSWORD = process.env.WASTENOT_PASSWORD ?? 'P7QBfhK$4N';
+const WASTENOT_URL = process.env.WASTENOT_URL;
+
+const LOGIN_ID = process.env.WASTENOT_LOGIN_ID;
+const LOGIN_PASSWORD = process.env.WASTENOT_PASSWORD;
 const LOGIN_OTP = process.env.WASTENOT_OTP;
 
 test.describe('WasteNot - Complex DB Validation', () => {

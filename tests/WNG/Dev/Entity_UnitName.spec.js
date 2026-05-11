@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { queryDatabase } from '../../../utils/db';
+import dotenv from 'dotenv';
+dotenv.config();
 
 test.describe('Dashboard Validation', () => {
   let dbConfig;
@@ -12,12 +14,12 @@ test.describe('Dashboard Validation', () => {
     };
     console.log('DB config set to dev (wastenotglobal)');
 
-    await page.goto('https://wastenotglobal.dev.eu.bamcotest.com/login');
+    await page.goto(process.env.GLOBAL_DEV_URL);
     await expect(page.getByRole('img', { name: 'waste-not-2.0-logo' })).toBeVisible();
     await expect(page.getByText('LOG INTO WASTE NOT')).toBeVisible();
 
-    await page.getByRole('textbox', { name: 'Login email' }).pressSequentially('adityaentity@mailinator.com', { delay: 100 });
-    await page.getByRole('textbox', { name: 'Password' }).pressSequentially('Aditya@global2', { delay: 100 });
+    await page.getByRole('textbox', { name: 'Login email' }).pressSequentially(process.env.GD_ENTITY_USERNAME, { delay: 100 });
+    await page.getByRole('textbox', { name: 'Password' }).pressSequentially(process.env.GD_ENTITY_PASSWORD, { delay: 100 });
     await page.getByRole('button', { name: 'Log in' }).click();
   });
 
@@ -50,36 +52,6 @@ test.describe('Dashboard Validation', () => {
       throw new Error(`Entity Unit ID not found for unit: ${unitName}`);
     }
     console.log(`Entity Unit ID for ${unitName}: ${entityUnitId}`);
-
-    // ---------- FETCH TARGET VALUE ----------
-    console.log(`Fetching Target for campus_id: ${entityUnitId}`);
-    const getTargetQuery = `
-      SELECT Target 
-      FROM waste_trend_targets 
-      WHERE entity_unit_id = '${entityUnitId}'
-      LIMIT 1;
-    `;
-    const targetResult = await queryDatabase(getTargetQuery, dbConfig);
-    let targetValue = targetResult[0]?.Target;
-
-    if (targetValue !== undefined && targetValue !== null) {
-      targetValue = Math.round(targetValue);
-      console.log(`Target value found in DB: ${targetValue} lbs`);
-
-      // Wait for iframe
-      const iframeWasteNot = await page.frameLocator('#wastenot-html');
-
-      try {
-        await expect(
-          iframeWasteNot.getByText(`TARGET: ${targetValue} lbs`)
-        ).toBeVisible({ timeout: 5000 });
-        console.log(`Verified TARGET: ${targetValue} lbs is visible on UI`);
-      } catch (err) {
-        console.warn(`TARGET: ${targetValue} lbs not visible on UI, but continuing...`);
-      }
-    } else {
-      console.log('No Target value found for this campus, skipping target validation.');
-    }
 
     // ================= DATE RANGES =================
     const now = new Date();

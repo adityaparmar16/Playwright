@@ -12,3 +12,4 @@ tests/downloads/
 tests/WNT/.DS_Store
 downloads/
 .cursor/
+.env

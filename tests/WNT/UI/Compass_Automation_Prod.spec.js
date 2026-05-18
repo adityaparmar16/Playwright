@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const COMPASS_DEV_API_URL = process.env.COMPASS_DEV_API_URL;
+const COMPASS_PROD_API_URL = process.env.COMPASS_PROD_API_URL;
 
 const LOGIN_ID = process.env.WASTENOT_LOGIN_ID;
 const LOGIN_PASSWORD = process.env.WASTENOT_PASSWORD;
@@ -16,7 +16,7 @@ test.describe('WasteNot - Complex DB Validation', () => {
 
     test.beforeEach(async ({ page }, testInfo) => {
         dbConfig = {
-            ...testInfo.config.metadata.dbdev,
+            ...testInfo.config.metadata.dbproduction,
             database: 'cafemanager'
         };
     });
@@ -27,7 +27,7 @@ test.describe('WasteNot - Complex DB Validation', () => {
         // =========================
         // 🔐 LOGIN FLOW
         // =========================
-        await page.goto(COMPASS_DEV_API_URL, { waitUntil: 'domcontentloaded' });
+        await page.goto(COMPASS_PROD_API_URL, { waitUntil: 'domcontentloaded' });
 
         await page.getByRole('textbox', { name: /Login ID/i }).fill(LOGIN_ID);
 

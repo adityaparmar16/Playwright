@@ -1,11 +1,17 @@
 // utils/apiHelper.js
 import https from "https";
+import dotenv from "dotenv";
 
-// Centralized auth config
+dotenv.config();
+
+// Centralized auth config from env
 const AUTH = {
-  BASIC_AUTH: Buffer.from("bamco:HwzwlYucR4NMx50EMoFG").toString("base64"),
-  CLIENT_NAME: "Wastenot",
-  CLIENT_KEY: "Q4N99gjF5ZdrdQzPm7fKpfhKn7zFGQ5m"
+  BASIC_AUTH: Buffer.from(
+    `${process.env.API_BASIC_USERNAME}:${process.env.API_BASIC_PASSWORD}`
+  ).toString("base64"),
+
+  CLIENT_NAME: process.env.CLIENT_NAME,
+  CLIENT_KEY: process.env.CLIENT_KEY,
 };
 
 // Fetch utility with auth headers
@@ -22,8 +28,15 @@ export async function fetchAuth(url) {
 
     const req = https.request(url, options, (res) => {
       let data = "";
+
       res.on("data", (chunk) => (data += chunk));
-      res.on("end", () => resolve({ status: res.statusCode, body: data }));
+
+      res.on("end", () =>
+        resolve({
+          status: res.statusCode,
+          body: data,
+        })
+      );
     });
 
     req.on("error", reject);

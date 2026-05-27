@@ -24,9 +24,8 @@ test.describe('WasteNot - Complex DB Validation', () => {
     test('Validate UI data with DB for Complex', async ({ page }) => {
         test.setTimeout(360000);
 
-        // =========================
-        // 🔐 LOGIN FLOW
-        // =========================
+        // LOGIN FLOW
+    
         await page.goto(COMPASS_PROD_API_URL, { waitUntil: 'domcontentloaded' });
 
         await page.getByRole('textbox', { name: /Login ID/i }).fill(LOGIN_ID);
@@ -39,9 +38,8 @@ test.describe('WasteNot - Complex DB Validation', () => {
         await page.getByRole('textbox', { name: /Enter the password/i }).fill(LOGIN_PASSWORD);
         await page.getByRole('button', { name: /^Sign in$/i }).click();
 
-        // =========================
-        // 🔐 MFA HANDLING
-        // =========================
+        // MFA HANDLING
+
         const mfaButtons = page.getByRole('button', { name: /Text/i });
 
         let smsOtpButton = mfaButtons.filter({ hasText: /6968|68/ }).first();
@@ -95,10 +93,8 @@ test.describe('WasteNot - Complex DB Validation', () => {
             await staySignedInNo.click();
         }
 
-        // =========================
-        // UI VALIDATION (AS-IS, CLEANED)
-        // =========================
-        // reuse frame instead of repeating
+        // UI VALIDATION
+    
         const frame = page.locator('#wastenot-html').contentFrame();
 
         await expect(page.locator('[id="row wastenot-nav"]')).toContainText('COMPASS', {
@@ -142,16 +138,13 @@ test.describe('WasteNot - Complex DB Validation', () => {
         await expect(frame.getByText('Average Food Waste per Day')).toBeVisible();
         await expect(frame.getByRole('button', { name: 'TRACK TRENDS' })).toBeVisible();
 
-        // =========================
-        // 🗄️ DB VALIDATION
-        // =========================
-
-        // ================= DATE RANGES =================
+        // DATE RANGES
         const now = new Date();
 
         //Current Month
         const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        //const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0); //use current month end date till today
+        const currentMonthEnd = new Date(new Date().setDate(new Date().getDate() - 1)); //use current month end date till yesterday
 
         //Past 6 Months (excluding current month)
         const past6MonthsStart = new Date(now.getFullYear(), now.getMonth() - 6, 1);
@@ -328,7 +321,7 @@ test.describe('WasteNot - Complex DB Validation', () => {
         const subjectInput = frame.locator('#subject');
         const sendNowBtn = frame.getByRole('button', { name: /Send Now/i });
 
-        //---------- SEND NOW ----------
+        //SEND NOW
 
         await Promise.all([
             subjectInput.waitFor({ state: 'visible', timeout: 30000 }),
@@ -352,12 +345,12 @@ test.describe('WasteNot - Complex DB Validation', () => {
         //Add all emails in same email thread
         for (const email of emails) {
             await emailTextbox.type(email);
-            await emailTextbox.press(';'); // or use 'Enter'
+            await emailTextbox.press(';');
             await page.waitForTimeout(300);
         }
 
         //Fill subject directly
-        await subjectInput.fill('Compass - Now Report via Automation');
+        await subjectInput.fill('Compass Production - Now Report via Automation');
 
         //Ensure button is ready
         await expect(sendNowBtn).toBeVisible({ timeout: 30000 });
@@ -385,7 +378,7 @@ test.describe('WasteNot - Complex DB Validation', () => {
 
         await frame.getByRole('textbox', { name: 'test@compass-usa.com' }).clear();
         await frame.getByRole('textbox', { name: 'test@compass-usa.com' })
-            .fill('aditya.parmar@ccube.com;sonam.b@ccube.com');
+            .fill('aditya.parmar@ccube.com');
 
         await frame.getByText('Daily').click();
 
@@ -401,7 +394,7 @@ test.describe('WasteNot - Complex DB Validation', () => {
 
         await frame.locator('#subject').waitFor({ state: 'visible' });
         await frame.locator('#subject').clear();
-        await frame.locator('#subject').fill('Scheduled Report via Automation');
+        await frame.locator('#subject').fill('Compass Production - Scheduled Report via Automation');
 
         page.once('dialog', async dialog => {
             console.log(`Dialog: ${dialog.message()}`);

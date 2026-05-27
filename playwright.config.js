@@ -1,4 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export default defineConfig({
   timeout: 90000,
@@ -8,6 +11,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
+
   use: {
     trace: 'on-first-retry',
   },
@@ -27,38 +31,41 @@ export default defineConfig({
     },
   ],
 
-  // custom DB metadata
-  // custom env variables for DBs
   metadata: {
     dbproduction: {
-      host: "rds-cafemanager-prod.bamco.internal",
-      user: "user_newput_aditya",
-      password: "sDDAn7Qg4u4CG5",
+      host: process.env.DB_PROD_HOST,
+      user: process.env.DB_PROD_USER,
+      password: process.env.DB_PROD_PASSWORD,
     },
+
     dbproductionWrite: {
-      host: "rds-cafemanager-prod.bamco.internal",
-      user: "user_newput_mansi",
-      password: "+Oba4j+cPIqtA7t7k+xtbU8taz6E7DhcnIsVbDnpWmI=",
+      host: process.env.DB_PROD_WRITE_HOST,
+      user: process.env.DB_PROD_WRITE_USER,
+      password: process.env.DB_PROD_WRITE_PASSWORD,
     },
+
     dbdev: {
-      host: "rds-cafemanager-dev.bamco.internal",
-      user: "user_newput_aditya",
-      password: "sDDAn7Qg4u4CG5",
+      host: process.env.DB_DEV_HOST,
+      user: process.env.DB_DEV_USER,
+      password: process.env.DB_DEV_PASSWORD,
     },
+
     dbdevWrite: {
-      host: "rds-cafemanager-dev.bamco.internal",
-      user: "user_newput_mansi",
-      password: "+Oba4j+cPIqtA7t7k+xtbU8taz6E7DhcnIsVbDnpWmI=",
+      host: process.env.DB_DEV_WRITE_HOST,
+      user: process.env.DB_DEV_WRITE_USER,
+      password: process.env.DB_DEV_WRITE_PASSWORD,
     },
+
     globaldev: {
-      host: "wastenot-rds-dev.bamco.internal",
-      user: "user_newput_aditya",
-      password: "sDDAn7Qg4u4CG5",
+      host: process.env.GLOBAL_DEV_HOST,
+      user: process.env.GLOBAL_DEV_USER,
+      password: process.env.GLOBAL_DEV_PASSWORD,
     },
+
     globalprod: {
-      host: "wastenot-rds-production.bamco.internal",
-      user: "user_newput_aditya",
-      password: "sDDAn7Qg4u4CG5",
+      host: process.env.GLOBAL_PROD_HOST,
+      user: process.env.GLOBAL_PROD_USER,
+      password: process.env.GLOBAL_PROD_PASSWORD,
     }
   },
 });

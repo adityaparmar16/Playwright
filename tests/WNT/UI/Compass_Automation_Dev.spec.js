@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const COMPASS_DEV_API_URL = process.env.COMPASS_DEV_API_URL;
+const COMPASS_DEV_API_URL = process.env.COMPASS_DEV_URL;
 
 const LOGIN_ID = process.env.WASTENOT_LOGIN_ID;
 const LOGIN_PASSWORD = process.env.WASTENOT_PASSWORD;

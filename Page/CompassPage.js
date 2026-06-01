@@ -198,7 +198,12 @@ export class CompassPage {
 
         await expect(sendNowBtn).toBeVisible({ timeout: 30000 });
         await expect(sendNowBtn).toBeEnabled();
-        await sendNowBtn.click();
+
+        // Even force:true requires the click coordinates to be inside the viewport.
+        // For buttons inside an iframe that's scrolled off-screen, use evaluate() to
+        // invoke the button's native DOM click() directly — this skips coordinate-based
+        // clicking entirely and works regardless of viewport position.
+        await sendNowBtn.evaluate(el => el.click());
         await this.page.waitForTimeout(3000);
     }
 
@@ -208,37 +213,74 @@ export class CompassPage {
      * Open Reports → Now → Schedule, fill in schedule details, and create.
      * @param {{ email: string, frequency: string, dateRange: string, subject: string }} opts
      */
+    // ── Private helper: scroll an element inside the iframe via JS evaluate ──────
+    // scrollIntoViewIfNeeded() on frameLocator/contentFrame elements only scrolls
+    // the *main page* — it does NOT scroll inside the iframe's own DOM.
+    async _iframeScrollTo(iframeSelector, findEl) {
+        await this.page.evaluate(
+            ({ iframeSelector, findEl }) => {
+                const iframe = document.querySelector(iframeSelector);
+                if (!iframe?.contentDocument) return;
+                const fn = new Function('doc', `return (${findEl})(doc)`);
+                const el = fn(iframe.contentDocument);
+                el?.scrollIntoView({ block: 'center', inline: 'center' });
+            },
+            { iframeSelector, findEl }
+        );
+        await this.page.waitForTimeout(300);
+    }
+
     async scheduleReport({ email, frequency = 'Daily', dateRange = 'Fiscal Month to Date', subject }) {
         const frame = this.iframeFrame;
+        const iframeSel = 'iframe#wastenot-html';
 
         await this.reportsBtn.waitFor({ state: 'visible', timeout: 60000 });
         await expect(this.reportsBtn).toBeVisible();
 
-        await frame.getByRole('button', { name: 'REPORTS' }).waitFor({ state: 'visible' });
-        await frame.getByRole('button', { name: 'REPORTS' }).click();
+        // Each click: JS-scroll inside the iframe first, then click with force:true
+        const reportsFrameBtn = frame.getByRole('button', { name: 'REPORTS' });
+        await reportsFrameBtn.waitFor({ state: 'visible' });
+        await this._iframeScrollTo(iframeSel, 'doc => [...doc.querySelectorAll("button")].find(b => /^REPORTS$/i.test(b.textContent?.trim()))');
+        await reportsFrameBtn.evaluate(el => el.click());
 
-        await frame.getByRole('button', { name: 'Now', exact: true }).waitFor({ state: 'visible' });
-        await frame.getByRole('button', { name: 'Now', exact: true }).click();
+        const nowBtn = frame.getByRole('button', { name: 'Now', exact: true });
+        await nowBtn.waitFor({ state: 'visible' });
+        await this._iframeScrollTo(iframeSel, 'doc => [...doc.querySelectorAll("button")].find(b => /^Now$/i.test(b.textContent?.trim()))');
+        await nowBtn.evaluate(el => el.click());
 
-        await frame.getByRole('link', { name: 'Schedule' }).click();
+        const scheduleLink = frame.getByRole('link', { name: 'Schedule' });
+        await this._iframeScrollTo(iframeSel, 'doc => [...doc.querySelectorAll("a")].find(a => /schedule/i.test(a.textContent?.trim()))');
+        await scheduleLink.evaluate(el => el.click());
 
         // Email
         const emailInput = frame.getByRole('textbox', { name: 'test@compass-usa.com' });
         await emailInput.waitFor({ state: 'visible' });
+        await this._iframeScrollTo(iframeSel, `doc => doc.querySelector('input[placeholder*="compass-usa"], input[type="email"]')`);
         await emailInput.clear();
         await emailInput.fill(email);
 
-        // Frequency & date range
-        await frame.getByText(frequency).click();
-        await frame.getByRole('radio', { name: 'Everyday' }).check({ force: true });
-        await frame.getByRole('textbox', { name: 'Select' }).click();
+        // Frequency
+        await this._iframeScrollTo(iframeSel, `doc => [...doc.querySelectorAll('*')].find(e => e.textContent?.trim() === '${frequency}' && e.children.length === 0)`);
+        const freqEl = frame.getByText(frequency);
+        await freqEl.evaluate(el => el.click());
+
+        await frame.getByRole('radio', { name: 'Everyday' }).evaluate(el => { el.click(); });
+
+        // Date range select
+        await this._iframeScrollTo(iframeSel, `doc => doc.querySelector('input[placeholder="Select"]')`);
+        const selectBox = frame.getByRole('textbox', { name: 'Select' });
+        await selectBox.evaluate(el => el.click());
         await frame.getByText(dateRange).waitFor({ state: 'visible' });
-        await frame.getByText(dateRange).click();
+        await this._iframeScrollTo(iframeSel, `doc => [...doc.querySelectorAll('*')].find(e => e.textContent?.trim() === '${dateRange}' && e.children.length === 0)`);
+        const dateRangeEl = frame.getByText(dateRange);
+        await dateRangeEl.evaluate(el => el.click());
 
         // Subject
-        await frame.locator('#subject').waitFor({ state: 'visible' });
-        await frame.locator('#subject').clear();
-        await frame.locator('#subject').fill(subject);
+        const subjectField = frame.locator('#subject');
+        await subjectField.waitFor({ state: 'visible' });
+        await this._iframeScrollTo(iframeSel, 'doc => doc.querySelector("#subject")');
+        await subjectField.clear();
+        await subjectField.fill(subject);
 
         // Create — dismiss any dialog
         this.page.once('dialog', async dialog => {
@@ -246,7 +288,9 @@ export class CompassPage {
             await dialog.dismiss();
         });
 
-        await frame.getByRole('button', { name: 'Create', exact: true }).waitFor({ state: 'visible' });
-        await frame.getByRole('button', { name: 'Create', exact: true }).click();
+        const createBtn = frame.getByRole('button', { name: 'Create', exact: true });
+        await createBtn.waitFor({ state: 'visible' });
+        await this._iframeScrollTo(iframeSel, 'doc => [...doc.querySelectorAll("button")].find(b => /^Create$/i.test(b.textContent?.trim()))');
+        await createBtn.evaluate(el => el.click());
     }
 }

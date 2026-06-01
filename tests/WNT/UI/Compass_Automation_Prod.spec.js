@@ -25,7 +25,7 @@ test.describe('WasteNot - Complex DB Validation', () => {
         test.setTimeout(360000);
 
         // LOGIN FLOW
-    
+
         await page.goto(COMPASS_PROD_API_URL, { waitUntil: 'domcontentloaded' });
 
         await page.getByRole('textbox', { name: /Login ID/i }).fill(LOGIN_ID);
@@ -94,7 +94,7 @@ test.describe('WasteNot - Complex DB Validation', () => {
         }
 
         // UI VALIDATION
-    
+
         const frame = page.locator('#wastenot-html').contentFrame();
 
         await expect(page.locator('[id="row wastenot-nav"]')).toContainText('COMPASS', {
@@ -345,33 +345,37 @@ test.describe('WasteNot - Complex DB Validation', () => {
         //Add all emails in same email thread
         for (const email of emails) {
             await emailTextbox.type(email);
-            await emailTextbox.press(';');
+            await emailTextbox.press(';'); // or use 'Enter'
             await page.waitForTimeout(300);
         }
 
         //Fill subject directly
-        await subjectInput.fill('Compass Production - Now Report via Automation');
+        await subjectInput.fill('Compass - Now Report via Automation');
 
         //Ensure button is ready
         await expect(sendNowBtn).toBeVisible({ timeout: 30000 });
         await expect(sendNowBtn).toBeEnabled();
 
-        await sendNowBtn.click();
+        // Send Now lives inside an iframe and is often scrolled off-screen.
+        // scrollIntoViewIfNeeded() only scrolls the main page, not inside the iframe,
+        // and .click({ force: true }) still requires viewport coordinates. The reliable
+        // fix is to invoke the button's native DOM click() via evaluate().
+        await sendNowBtn.evaluate(el => el.click());
 
         await page.waitForTimeout(3000);
 
         await reportsBtn.waitFor({ state: 'visible', timeout: 60000 });
         await expect(reportsBtn).toBeVisible();
 
-        await frame.getByRole('button', { name: 'REPORTS' })
-            .waitFor({ state: 'visible' });
-        await frame.getByRole('button', { name: 'REPORTS' }).click();
+        const reportsFrameBtn = frame.getByRole('button', { name: 'REPORTS' });
+        await reportsFrameBtn.waitFor({ state: 'visible' });
+        await reportsFrameBtn.evaluate(el => el.click());
 
-        await frame.getByRole('button', { name: 'Now', exact: true })
-            .waitFor({ state: 'visible' });
-        await frame.getByRole('button', { name: 'Now', exact: true }).click();
+        const nowFrameBtn = frame.getByRole('button', { name: 'Now', exact: true });
+        await nowFrameBtn.waitFor({ state: 'visible' });
+        await nowFrameBtn.evaluate(el => el.click());
 
-        await frame.getByRole('link', { name: 'Schedule' }).click();
+        await frame.getByRole('link', { name: 'Schedule' }).evaluate(el => el.click());
 
         await frame.getByRole('textbox', { name: 'test@compass-usa.com' })
             .waitFor({ state: 'visible' });
@@ -380,30 +384,33 @@ test.describe('WasteNot - Complex DB Validation', () => {
         await frame.getByRole('textbox', { name: 'test@compass-usa.com' })
             .fill('aditya.parmar@ccube.com');
 
-        await frame.getByText('Daily').click();
+        const dailyOption = frame.getByText('Daily', { exact: true });
+        await dailyOption.evaluate(el => el.click());
 
-        await frame.getByRole('radio', { name: 'Everyday' })
-            .check({ force: true });
+        const everydayOption = frame.getByText('Everyday', { exact: true });
+        await everydayOption.evaluate(el => el.click());
 
-        await frame.getByRole('textbox', { name: 'Select' }).click();
+        const dateRangeDropdown =
+            frame.getByRole('textbox', { name: 'Select' });
 
-        await frame.getByText('Fiscal Month to Date')
-            .waitFor({ state: 'visible' });
+        await dateRangeDropdown.evaluate(el => el.click());
 
-        await frame.getByText('Fiscal Month to Date').click();
+        const fiscalMonthToDate =
+            frame.locator('[data-val="5"]');
+
+        await fiscalMonthToDate.evaluate(el => el.click());
 
         await frame.locator('#subject').waitFor({ state: 'visible' });
         await frame.locator('#subject').clear();
-        await frame.locator('#subject').fill('Compass Production - Scheduled Report via Automation');
+        await frame.locator('#subject').fill('Scheduled Report via Automation');
 
         page.once('dialog', async dialog => {
             console.log(`Dialog: ${dialog.message()}`);
             await dialog.dismiss();
         });
 
-        await frame.getByRole('button', { name: 'Create', exact: true })
-            .waitFor({ state: 'visible' });
-
-        await frame.getByRole('button', { name: 'Create', exact: true }).click();
+        const createFrameBtn = frame.getByRole('button', { name: 'Create', exact: true });
+        await createFrameBtn.waitFor({ state: 'visible' });
+        await createFrameBtn.evaluate(el => el.click());
     });
 });

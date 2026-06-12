@@ -113,12 +113,39 @@ export class ReportsPage {
     this.page = page;
     this.reportsBtn = page.getByRole('button', { name: 'REPORTS', exact: true });
     this.toTextbox = page.getByRole('textbox', { name: 'To*' });
+    this.subjectTextbox = page.locator('textarea[name="subject"]');
     this.nowBtn = page.getByRole('button', { name: 'now', exact: true });
     this.scheduleBtn = page.getByRole('button', { name: 'schedule', exact: true });
     this.everydayRadio = page.getByRole('radio', { name: 'Everyday' });
     this.weeklyRadio = page.getByRole('radio', { name: 'Weekly' });
     this.sendNowBtn = page.getByRole('button', { name: 'Send Now' });
     this.alert = page.getByRole('alert');
+  }
+
+  async fillSubject(subjectText) {
+    await expect(this.subjectTextbox).toBeVisible();
+    await this.subjectTextbox.click();
+    await this.subjectTextbox.fill('');
+    await this.subjectTextbox.fill(subjectText);
+    await expect(this.subjectTextbox).toHaveValue(subjectText);
+  }
+
+  // Waits for the Schedule form to actually render after clicking "schedule".
+  // Re-clicks and retries if it doesn't show up within a short window.
+  async waitForScheduleForm(retries = 3) {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        await Promise.race([
+          this.everydayRadio.waitFor({ state: 'visible', timeout: 10000 }),
+          this.weeklyRadio.waitFor({ state: 'visible', timeout: 10000 }),
+        ]);
+        return;
+      } catch {
+        console.warn(`Schedule form not visible (attempt ${attempt}/${retries}), re-clicking schedule button`);
+        if (attempt === retries) throw new Error('Schedule form did not render after multiple attempts');
+        await this.scheduleBtn.click();
+      }
+    }
   }
 
   async openAndFillEmail(emailId) {
@@ -128,51 +155,54 @@ export class ReportsPage {
     await this.toTextbox.click();
     await this.toTextbox.fill('');
     await this.toTextbox.fill(emailId);
+
     await this.nowBtn.waitFor({ state: 'visible' });
     await this.nowBtn.click();
     await this.scheduleBtn.waitFor({ state: 'visible' });
     await this.scheduleBtn.click();
+
+    await this.waitForScheduleForm();
   }
 
   async selectEveryday() {
-    await this.everydayRadio.waitFor({ state: 'visible' });
+    await this.everydayRadio.waitFor({ state: 'visible', timeout: 10000 });
     await this.everydayRadio.check();
   }
 
   async selectWeekly(day) {
-    await this.weeklyRadio.waitFor({ state: 'visible' });
+    await this.weeklyRadio.waitFor({ state: 'visible', timeout: 10000 });
     await this.weeklyRadio.check();
 
     const recurDropdown = this.page.locator('div')
       .filter({ hasText: /^Recur Every Week\(s\)Select one day of the week$/ })
       .locator('i').nth(1);
-    await recurDropdown.waitFor({ state: 'visible' });
+    await recurDropdown.waitFor({ state: 'visible', timeout: 10000 });
     await recurDropdown.click();
 
     const dropdownBtn = this.page.getByRole('button').filter({ hasText: /^$/ });
     await dropdownBtn.first().click();
 
     const oneOption = this.page.getByRole('button', { name: '1', exact: true });
-    await oneOption.waitFor({ state: 'visible' });
+    await oneOption.waitFor({ state: 'visible', timeout: 10000 });
     await oneOption.click();
 
     const dayRadio = this.page.getByRole('radio', { name: day });
-    await dayRadio.waitFor({ state: 'visible' });
+    await dayRadio.waitFor({ state: 'visible', timeout: 10000 });
     await dayRadio.check();
   }
 
   async selectTimezone(zone) {
     const timezoneDropdown = this.page.getByRole('button', { name: 'Select a timezone' });
-    await timezoneDropdown.waitFor({ state: 'visible' });
+    await timezoneDropdown.waitFor({ state: 'visible', timeout: 10000 });
     await timezoneDropdown.click();
     const zoneOption = this.page.getByRole('button', { name: zone });
-    await zoneOption.waitFor({ state: 'visible' });
+    await zoneOption.waitFor({ state: 'visible', timeout: 10000 });
     await zoneOption.click();
   }
 
   async createSchedule() {
     const createBtn = this.page.getByRole('button', { name: 'Create' }).nth(1);
-    await createBtn.waitFor({ state: 'visible' });
+    await createBtn.waitFor({ state: 'visible', timeout: 10000 });
     await createBtn.click();
     await expect(this.alert).toBeVisible();
     console.log('Toast/Alert Message:', await this.alert.innerText());
@@ -184,6 +214,7 @@ export class ReportsPage {
       if (schedule.type === 'Everyday') await this.selectEveryday();
       if (schedule.type === 'Weekly') await this.selectWeekly(schedule.day);
       await this.selectTimezone(schedule.timezone);
+      await this.fillSubject('Scheduled Report via Automation');
       await this.createSchedule();
     }
   }
@@ -195,6 +226,9 @@ export class ReportsPage {
     await this.toTextbox.click();
     await this.toTextbox.fill('');
     await this.toTextbox.fill(emailId);
+
+    await this.fillSubject('NOW Report via Automation');
+
     await this.sendNowBtn.waitFor({ state: 'visible' });
     await this.sendNowBtn.click();
     await expect(this.alert).toBeVisible();
@@ -206,28 +240,28 @@ export class ReportsPage {
 // ═══════════════════════════════════════════════════════════════
 
 function formatDate(date, isEnd = false) {
-  const year  = date.getFullYear();
+  const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day   = String(date.getDate()).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day} ${isEnd ? '23:59:59' : '00:00:00'}`;
 }
 
 export function getDashboardDateRanges() {
   const now = new Date();
-  const currentMonthStart  = new Date(now.getFullYear(), now.getMonth(), 1);
-  const currentMonthEnd    = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const past6MonthsStart   = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-  const past6MonthsEnd     = new Date(now.getFullYear(), now.getMonth(), 0);
-  const lastYearStart      = new Date(now.getFullYear() - 1, now.getMonth(), 1);
-  const lastYearEnd        = new Date(now.getFullYear() - 1, now.getMonth() + 1, 0);
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const past6MonthsStart = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+  const past6MonthsEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  const lastYearStart = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+  const lastYearEnd = new Date(now.getFullYear() - 1, now.getMonth() + 1, 0);
 
   return {
-    currentMonthStartDate : formatDate(currentMonthStart),
-    currentMonthEndDate   : formatDate(currentMonthEnd, true),
-    past6MonthsStartDate  : formatDate(past6MonthsStart),
-    past6MonthsEndDate    : formatDate(past6MonthsEnd, true),
-    lastYearStartDate     : formatDate(lastYearStart),
-    lastYearEndDate       : formatDate(lastYearEnd, true),
+    currentMonthStartDate: formatDate(currentMonthStart),
+    currentMonthEndDate: formatDate(currentMonthEnd, true),
+    past6MonthsStartDate: formatDate(past6MonthsStart),
+    past6MonthsEndDate: formatDate(past6MonthsEnd, true),
+    lastYearStartDate: formatDate(lastYearStart),
+    lastYearEndDate: formatDate(lastYearEnd, true),
   };
 }
 
@@ -272,8 +306,8 @@ export async function getEntityUnitIdCaseInsensitive(unitName, idNumber, dbConfi
 export async function fetchDashboardMetrics(entityUnitId, dateRanges, dbConfig) {
   const {
     currentMonthStartDate, currentMonthEndDate,
-    past6MonthsStartDate,  past6MonthsEndDate,
-    lastYearStartDate,     lastYearEndDate,
+    past6MonthsStartDate, past6MonthsEndDate,
+    lastYearStartDate, lastYearEndDate,
   } = dateRanges;
 
   const currentMonthQuery = `
@@ -332,15 +366,15 @@ export async function fetchDashboardMetrics(entityUnitId, dateRanges, dbConfig) 
 
   console.log('DB Results:', { past6MonthsResult, currentMonthResult, lastYearResult });
 
-  const dbPast6Months  = Math.round(past6MonthsResult[0]?.overall_avg_lbs_per_day || 0);
+  const dbPast6Months = Math.round(past6MonthsResult[0]?.overall_avg_lbs_per_day || 0);
   const dbCurrentMonth = Math.round(currentMonthResult[0]?.avg_lbs_per_day || 0);
-  const dbLastYear     = Math.round(lastYearResult[0]?.avg_lbs_per_day || 0);
+  const dbLastYear = Math.round(lastYearResult[0]?.avg_lbs_per_day || 0);
 
   console.log(`Processed Values → Past6Months: ${dbPast6Months}, CurrentMonth: ${dbCurrentMonth}, LastYear: ${dbLastYear}`);
 
   return {
     'Past 6 Months': dbPast6Months,
     'Current Month': dbCurrentMonth,
-    'Last Year':     dbLastYear,
+    'Last Year': dbLastYear,
   };
 }

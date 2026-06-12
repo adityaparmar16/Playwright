@@ -2,7 +2,7 @@ import { test } from '@playwright/test';
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { LoginPage, DashboardPage, ReportsPage, getDashboardDateRanges, getEntityUnitIdByNumber, fetchDashboardMetrics } from '../../../Page/index.js';
+import { LoginPage, DashboardPage, ReportsPage, getDashboardDateRanges, getEntityUnitIdByNumber, fetchDashboardMetrics } from '../../../Page/GlobalPage.js';
 
 const ID_NUMBER      = 323;
 const UNIT_NAME_FULL = `Unit one (${ID_NUMBER})`;

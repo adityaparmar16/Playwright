@@ -2,7 +2,7 @@ import { test } from '@playwright/test';
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { LoginPage, DashboardPage, ReportsPage, getDashboardDateRanges, getEntityUnitId, fetchDashboardMetrics } from '../../../Page/index.js';
+import { LoginPage, DashboardPage, ReportsPage, getDashboardDateRanges, getEntityUnitId, fetchDashboardMetrics } from '../../../Page/GlobalPage.js';
 
 const UNIT_NAME = 'abbb';
 const EMAIL_ID  = 'aditya.parmar@ccube.com';

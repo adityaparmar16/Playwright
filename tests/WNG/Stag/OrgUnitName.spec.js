@@ -4,7 +4,7 @@ dotenv.config();
 
 import { LoginPage, DashboardPage, ReportsPage, getDashboardDateRanges, getEntityUnitId, fetchDashboardMetrics } from '../../../Page/GlobalPage.js';
 
-const UNIT_NAME = 'abbb';
+const UNIT_NAME = 'Sejal Unit 01';
 const EMAIL_ID  = 'aditya.parmar@ccube.com';
 const SCHEDULES = [
   { type: 'Everyday', timezone: 'Central European Standard Time' },
@@ -16,13 +16,13 @@ test.describe('Dashboard Validation – Org (Unit Name)', () => {
   let dbConfig;
 
   test.beforeEach(async ({ page }, testInfo) => {
-    dbConfig = { ...testInfo.config.metadata.globaldev, database: 'wastenotglobal' };
-    console.log('DB config set to dev (wastenotglobal)');
+    dbConfig = { ...testInfo.config.metadata.globalstag, database: 'wastenotglobal' };
+    console.log('DB config set to stag (wastenotglobal)');
 
     const loginPage = new LoginPage(page);
-    await loginPage.goto(process.env.GLOBAL_DEV_URL);
+    await loginPage.goto(process.env.GLOBAL_STAG_URL);
     await loginPage.assertPageLoaded();
-    await loginPage.login(process.env.GD_ORG_USERNAME, process.env.GD_ORG_PASSWORD);
+    await loginPage.login(process.env.GS_ORG_USERNAME, process.env.GS_ORG_PASSWORD);
   });
 
   test('Validate Dashboard DB vs UI', async ({ page }) => {

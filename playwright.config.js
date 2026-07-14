@@ -50,6 +50,12 @@ export default defineConfig({
       password: process.env.DB_DEV_PASSWORD,
     },
 
+    dbstag: {
+      host: process.env.DB_STAG_HOST,
+      user: process.env.DB_STAG_USER,
+      password: process.env.DB_STAG_PASSWORD,
+    },
+
     dbdevWrite: {
       host: process.env.DB_DEV_WRITE_HOST,
       user: process.env.DB_DEV_WRITE_USER,
@@ -60,6 +66,12 @@ export default defineConfig({
       host: process.env.GLOBAL_DEV_HOST,
       user: process.env.GLOBAL_DEV_USER,
       password: process.env.GLOBAL_DEV_PASSWORD,
+    },
+
+    globalstag: {
+      host: process.env.GLOBAL_STAG_HOST,
+      user: process.env.GLOBAL_STAG_USER,
+      password: process.env.GLOBAL_STAG_PASSWORD,
     },
 
     globalprod: {

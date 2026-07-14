@@ -2,41 +2,38 @@ import { test } from '@playwright/test';
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { LoginPage, DashboardPage, ReportsPage, getDashboardDateRanges, getEntityUnitIdByNumber, fetchDashboardMetrics } from '../../../Page/GlobalPage.js';
+import { LoginPage, DashboardPage, ReportsPage, getDashboardDateRanges, getEntityUnitId, fetchDashboardMetrics } from '../../../Page/GlobalPage.js';
 
-const ID_NUMBER      = 323;
-const UNIT_NAME_FULL = `Unit one (${ID_NUMBER})`;
-const UNIT_NAME_DB   = 'Unit One';
-const EMAIL_ID       = 'aditya.parmar@ccube.com';
+const UNIT_NAME = 'Sejal Unit 01';
+const EMAIL_ID  = 'aditya.parmar@ccube.com';
 const SCHEDULES = [
   { type: 'Everyday', timezone: 'Central European Standard Time' },
   { type: 'Weekly',   day: 'Monday',    timezone: 'Central European Standard Time' },
   { type: 'Weekly',   day: 'Wednesday', timezone: 'Eastern Standard Time' },
 ];
 
-test.describe('Dashboard Validation – Org (Unit Name + Number)', () => {
+test.describe('Dashboard Validation – Entity (Unit Name)', () => {
   let dbConfig;
 
   test.beforeEach(async ({ page }, testInfo) => {
-    dbConfig = { ...testInfo.config.metadata.globaldev, database: 'wastenotglobal' };
-    console.log('DB config set to dev (wastenotglobal)');
+    dbConfig = { ...testInfo.config.metadata.globalstag, database: 'wastenotglobal' };
+    console.log('DB config set to stag (wastenotglobal)');
 
     const loginPage = new LoginPage(page);
-    await loginPage.goto(process.env.GLOBAL_DEV_URL);
+    await loginPage.goto(process.env.GLOBAL_STAG_URL);
     await loginPage.assertPageLoaded();
-    await loginPage.login(process.env.GD_ORG_USERNAME, process.env.GD_ORG_PASSWORD);
+    await loginPage.login(process.env.GS_ENTITY_USERNAME, process.env.GS_ENTITY_PASSWORD);
   });
 
   test('Validate Dashboard DB vs UI', async ({ page }) => {
     const dashboard = new DashboardPage(page);
     const reports   = new ReportsPage(page);
 
-    console.log(UNIT_NAME_FULL);
     await dashboard.navigateToDashboard();
-    await dashboard.selectUnit(UNIT_NAME_FULL);
+    await dashboard.selectUnit(UNIT_NAME);
     await dashboard.selectImperial();
 
-    const entityUnitId = await getEntityUnitIdByNumber(UNIT_NAME_DB, ID_NUMBER, dbConfig);
+    const entityUnitId = await getEntityUnitId(UNIT_NAME, dbConfig);
     const dateRanges   = getDashboardDateRanges();
     console.log(dateRanges);
 

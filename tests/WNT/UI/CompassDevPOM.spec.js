@@ -4,7 +4,7 @@ import { buildDateRanges, runWasteQueries } from '../../../utils/bamcoHelpers.js
 import dotenv from 'dotenv';
 dotenv.config();
 
-const COMPLEX_ID  = 'C-58001';
+const COMPLEX_ID  = 'C-57323';
 const REPORT_EMAIL   = 'aditya.parmar@ccube.com';
 
 test.describe('WasteNot - Complex DB Validation', () => {

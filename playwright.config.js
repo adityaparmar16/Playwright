@@ -50,16 +50,22 @@ export default defineConfig({
       password: process.env.DB_DEV_PASSWORD,
     },
 
+    dbdevWrite: {
+      host: process.env.DB_DEV_WRITE_HOST,
+      user: process.env.DB_DEV_WRITE_USER,
+      password: process.env.DB_DEV_WRITE_PASSWORD,
+    },
+
     dbstag: {
       host: process.env.DB_STAG_HOST,
       user: process.env.DB_STAG_USER,
       password: process.env.DB_STAG_PASSWORD,
     },
 
-    dbdevWrite: {
-      host: process.env.DB_DEV_WRITE_HOST,
-      user: process.env.DB_DEV_WRITE_USER,
-      password: process.env.DB_DEV_WRITE_PASSWORD,
+    dbstagWrite: {
+      host: process.env.DB_STAG_WRITE_HOST,
+      user: process.env.DB_STAG_WRITE_USER,
+      password: process.env.DB_STAG_WRITE_PASSWORD,
     },
 
     globaldev: {
@@ -78,6 +84,24 @@ export default defineConfig({
       host: process.env.GLOBAL_PROD_HOST,
       user: process.env.GLOBAL_PROD_USER,
       password: process.env.GLOBAL_PROD_PASSWORD,
+    },
+
+    globaldevWrite: {
+      host: process.env.GLOBAL_DEV_WRITE_HOST,
+      user: process.env.GLOBAL_DEV_WRITE_USER,
+      password: process.env.GLOBAL_DEV_WRITE_PASSWORD,
+    },
+
+    globalstagWrite: {
+      host: process.env.GLOBAL_STAG_WRITE_HOST,
+      user: process.env.GLOBAL_STAG_WRITE_USER,
+      password: process.env.GLOBAL_STAG_WRITE_PASSWORD,
+    },
+
+    globalprodWrite: {
+      host: process.env.GLOBAL_PROD_WRITE_HOST,
+      user: process.env.GLOBAL_PROD_WRITE_USER,
+      password: process.env.GLOBAL_PROD_WRITE_PASSWORD,
     }
   },
 });

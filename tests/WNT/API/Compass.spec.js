@@ -12,7 +12,7 @@ const d = (n) =>
 
 const end = d(1);
 
-const BASE_URL = process.env.COMPASS_DEV_API_URL;
+const BASE_URL = process.env.COMPASS_PROD_API_URL;
 
 // Any record with this division_name reports school_id instead of costcenter.
 const SCHOOLS_DIVISION_NAME = "Schools Division";
@@ -93,7 +93,7 @@ const sample = (arr, n = 5) =>
 // `startDaysAgo` overrides the default 366-day (1yr) lookback — compass uses ~3 months.
 const testCases = [
   ["compass", "compass", true, 1000, 91],
-  ["complex", "complex=C-27833,C-57269,C-45159", false, 1000, 366],
+  ["complex", "complex=C-27833,C-57269,C-10107", false, 1000, 366],
   ["district", "district=CKH16,CKA22", false, 1000, 366],
   ["region", "region=CKH000,CKA000", false, 1000, 366],
   ["division", "division=CK0000,CH0000", false, 1000, 366],

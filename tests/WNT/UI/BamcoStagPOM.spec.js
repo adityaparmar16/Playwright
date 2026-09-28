@@ -4,7 +4,7 @@ import { runDashboardAndIframeTest } from '../../../utils/bamcoHelpers.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
-test.describe('Dashboard and Iframe Validation Tests — DEV', () => {
+test.describe('Dashboard and Iframe Validation Tests — STAGING', () => {
     let dbConfig;
 
     test.beforeEach(async ({ page }, testInfo) => {

@@ -81,7 +81,7 @@ async function fetchWithRetry(url, { attempts = 3, delayMs = 5000 } = {}) {
   throw lastError;
 }
 
-const sample = (arr, n = 5) =>
+const sample = (arr, n = 20) =>
   [...arr]
     .sort(() => 0.5 - Math.random())
     .slice(0, n);
@@ -92,7 +92,7 @@ const sample = (arr, n = 5) =>
 // query and was timing out at limit=1000.
 // `startDaysAgo` overrides the default 366-day (1yr) lookback — compass uses ~3 months.
 const testCases = [
-  ["compass", "compass", true, 1000, 91],
+  ["compass", "compass", true, 1000, 191],
   ["complex", "complex=C-27833,C-57269,C-10107", false, 1000, 366],
   ["district", "district=CKH16,CKA22", false, 1000, 366],
   ["region", "region=CKH000,CKA000", false, 1000, 366],

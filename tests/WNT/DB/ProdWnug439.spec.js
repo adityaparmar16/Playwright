@@ -1,20 +1,7 @@
 import { test } from "@playwright/test";
 import { queryDatabase } from "../../../utils/db.js";
-import fs from "fs";
-import path from "path";
+import { csv, save, toSqlDateTime as f } from "../../../utils/dbReport.js";
 
-const f = d => d.toISOString().slice(0, 19).replace("T", " "),
-      save = (n, d) => {
-        const p = path.join(process.cwd(), "test-results", n);
-        fs.mkdirSync(path.dirname(p), { recursive: true });
-        fs.writeFileSync(p, d);
-        return p;
-      },
-      csv = r => !r?.length ? "" :
-        [Object.keys(r[0]).join(","),
-         ...r.map(x => Object.values(x).map(v =>
-           `"${String(v ?? "").replace(/"/g,'""')}"`
-         ).join(","))].join("\n");
 
 test("Find & update duplicates", async ({}, testInfo) => {
 

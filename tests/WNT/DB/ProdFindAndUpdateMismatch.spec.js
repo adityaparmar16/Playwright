@@ -1,7 +1,18 @@
 import { test } from "@playwright/test";
 import { queryDatabase } from "../../../utils/db.js";
-import fs from "fs";
-import path from "path";
+import { csv, save } from "../../../utils/dbReport.js";
+
+/**
+ * Finds tablet profiles whose campus_id (C-*) doesn't match their kitchen's complex_id.
+ *
+ * Dry run by default — only finds and saves a CSV:
+ *   npx playwright test ProdFindAndUpdateMismatch --project=chromium
+ *
+ * To also fix them (updates prod):
+ *   CONFIRM_FIX=true npx playwright test ProdFindAndUpdateMismatch --project=chromium
+ *
+ * (Replaces ProdFindOnlyMismatch.spec.js, which was this script's find step on its own.)
+ */
 
 const q = `
 SELECT tp.id,tp.kitchen_id,tp.campus_id,k.complex_id,tp.created_at
@@ -13,27 +24,33 @@ AND NOT(tp.campus_id<=>k.complex_id)
 ORDER BY tp.kitchen_id,tp.created_at DESC
 `;
 
-const csv = r => !r?.length ? "" :
-  [Object.keys(r[0]).join(","),
-   ...r.map(x => Object.values(x).join(","))].join("\n");
-
-const save = (n,d) => {
-  const p = path.join(process.cwd(),"test-results",n);
-  fs.mkdirSync(path.dirname(p),{ recursive:true });
-  fs.writeFileSync(p,d);
-};
 
 test("Fix C-* mismatches", async ({}, testInfo) => {
 
   const read = testInfo.project.metadata?.dbproduction,
         write = testInfo.project.metadata?.dbproductionWrite || read,
+        confirm = process.env.CONFIRM_FIX === "true",
         t = Date.now();
 
   const before = await queryDatabase(q, read);
 
-  save(`before_${t}.csv`, csv(before));
+  const beforeFile = save(`mismatches_before_${t}.csv`, csv(before));
+
+  console.log(`
+    Mismatches: ${before.length}
+    Kitchens: ${[...new Set(before.map(x => x.kitchen_id))].join(",") || "None"}
+    CSV: ${beforeFile}
+  `);
 
   if (!before.length) return console.log("No mismatches");
+
+  if (!confirm) {
+    console.log(`
+    Dry run only — no changes made.
+    Review the CSV, then re-run with CONFIRM_FIX=true to update.
+    `);
+    return;
+  }
 
   await queryDatabase(`
     UPDATE cafemanager.ot_tablet_profile tp
@@ -47,7 +64,7 @@ test("Fix C-* mismatches", async ({}, testInfo) => {
 
   const after = await queryDatabase(q, read);
 
-  save(`after_${t}.csv`, csv(after));
+  save(`mismatches_after_${t}.csv`, csv(after));
 
   console.log(`
     Before: ${before.length}

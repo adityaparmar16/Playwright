@@ -1,32 +1,7 @@
 import { test } from "@playwright/test";
 import { queryDatabase } from "../../../utils/db.js";
-import fs from "fs";
-import path from "path";
+import { csv, save, toSqlDateTime as f } from "../../../utils/dbReport.js";
 
-const f = d =>
-  d.toISOString().slice(0, 19).replace("T", " "),
-
-save = (name, data) => {
-  const filePath = path.join(process.cwd(), "test-results", name);
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, data);
-  return filePath;
-},
-
-csv = rows => {
-  if (!rows?.length) return "";
-
-  return [
-    Object.keys(rows[0]).join(","),
-    ...rows.map(row =>
-      Object.values(row)
-        .map(value =>
-          `"${String(value ?? "").replace(/"/g, '""')}"`
-        )
-        .join(",")
-    )
-  ].join("\n");
-};
 
 
 test("Check job schedule health", async ({}, testInfo) => {

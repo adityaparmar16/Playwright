@@ -14,8 +14,8 @@ export class CompassPage {
         this.iframeFrame   = page.locator('#wastenot-html').contentFrame();
 
         // ── Iframe buttons (used frequently) ─────────────────────────
-        this.dashboardBtn = this.iframeLocator.getByRole('button', { name: 'DASHBOARD' });
-        this.reportsBtn   = this.iframeLocator.getByRole('button', { name: 'REPORTS' });
+        this.dashboardBtn = this.iframeLocator.getByRole('button', { name: 'DASHBOARD', exact: true });
+        this.reportsBtn   = this.iframeLocator.getByRole('button', { name: 'REPORTS', exact: true });
     }
 
     // ── Login ──────────────────────────────────────────────────────────
@@ -69,15 +69,35 @@ export class CompassPage {
         if (otp) {
             await otpInput.fill(otp);
             await this.page.getByRole('button', { name: /Verify|Next|Sign in/i }).click();
+            await this.waitForMicrosoftLoginToFinish(90000);
         } else {
-            console.log('⚠️ Enter OTP manually...');
-            await Promise.race([
-                this.page.waitForURL(/bamcotest\.com|compassmanager\.com/i, { timeout: 240000 }),
-                this.page.waitForLoadState('networkidle',                    { timeout: 240000 }),
-                this.page.waitForSelector('#wastenot-html',                  { timeout: 240000 }),
-            ]);
+            console.log('⚠️ Enter OTP manually in the browser window (you have 4 minutes)...');
+            await this.page.bringToFront();
+            await otpInput.waitFor({ state: 'visible', timeout: 30000 }).catch(() => {});
+            await otpInput.focus().catch(() => {});
+            await this.waitForMicrosoftLoginToFinish(240000);
             console.log('✅ Login completed after manual OTP');
         }
+    }
+
+    /**
+     * Waits until the browser has left the Microsoft login pages.
+     * Clicks "No" on the "Stay signed in?" prompt if it shows up meanwhile.
+     */
+    async waitForMicrosoftLoginToFinish(timeout = 240000) {
+        const deadline = Date.now() + timeout;
+        const noBtn = this.page.getByRole('button', { name: /^No$/i });
+        while (Date.now() < deadline) {
+            if (!/microsoftonline\.com|login\.live\.com/i.test(this.page.url())) {
+                await this.page.waitForLoadState('domcontentloaded');
+                return;
+            }
+            if (await noBtn.isVisible().catch(() => false)) {
+                await noBtn.click().catch(() => {});
+            }
+            await this.page.waitForTimeout(1000);
+        }
+        throw new Error(`Still on Microsoft login after ${timeout / 1000}s – OTP not completed`);
     }
 
     /** Dismiss "Stay signed in?" prompt if it appears. */
@@ -128,7 +148,19 @@ export class CompassPage {
         await expect(option).toBeVisible();
         await option.click();
 
-        await this.page.getByText(confirmText, { exact: true }).click();
+        // Close the dropdown by clicking outside it (applies the selection).
+        // Clicking the "COMPASS" text hung on pages where that text isn't visible (e.g. legacy.cafebonappetit.com).
+        const searchBox = this.page.getByRole('textbox', { name: 'Search' });
+        const label = this.page.getByText('Sector', { exact: true }).first();
+        if (await label.isVisible().catch(() => false)) {
+            await label.click();
+        } else {
+            await this.page.mouse.click(5, 5);
+        }
+        if (await searchBox.isVisible().catch(() => false)) {
+            await this.page.keyboard.press('Escape');
+        }
+        await expect(searchBox).toBeHidden({ timeout: 10000 });
     }
 
     // ── Post-filter Dashboard Assertions ──────────────────────────────
@@ -161,6 +193,8 @@ export class CompassPage {
             console.log(`✓ ${label} verified in UI: ${value} lbs`);
         } catch {
             console.warn(`✗ ${label} (${value} lbs) not visible in UI`);
+            const shown = await this.iframeLocator.getByText(/\d[\d,.]*\s*lbs/).allInnerTexts().catch(() => []);
+            console.warn(`   lbs values visible in UI: ${[...new Set(shown.map(t => t.trim()))].join(' | ') || '(none)'}`);
         }
     }
 
@@ -238,7 +272,7 @@ export class CompassPage {
         await expect(this.reportsBtn).toBeVisible();
 
         // Each click: JS-scroll inside the iframe first, then click with force:true
-        const reportsFrameBtn = frame.getByRole('button', { name: 'REPORTS' });
+        const reportsFrameBtn = frame.getByRole('button', { name: 'REPORTS', exact: true });
         await reportsFrameBtn.waitFor({ state: 'visible' });
         await this._iframeScrollTo(iframeSel, 'doc => [...doc.querySelectorAll("button")].find(b => /^REPORTS$/i.test(b.textContent?.trim()))');
         await reportsFrameBtn.evaluate(el => el.click());

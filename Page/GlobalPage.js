@@ -114,12 +114,37 @@ export class ReportsPage {
     this.reportsBtn = page.getByRole('button', { name: 'REPORTS', exact: true });
     this.toTextbox = page.getByRole('textbox', { name: 'To*' });
     this.subjectTextbox = page.locator('textarea[name="subject"]');
-    this.nowBtn = page.getByRole('button', { name: 'now', exact: true });
-    this.scheduleBtn = page.getByRole('button', { name: 'schedule', exact: true });
+    // "When*" dropdown in the Reports modal: toggle shows the current value,
+    // menu items are <a role="button"> "now" / "schedule"
+    this.whenDropdown = page.locator('.dropdown-container').filter({ has: page.locator('.dropdown-label', { hasText: 'When*' }) });
+    this.whenToggle = this.whenDropdown.locator('.dropdown-toggle');
+    this.whenMenu = this.whenDropdown.locator('.dropdown-menu.show');
+    this.nowBtn = this.whenToggle; // kept for backwards compatibility
+    this.scheduleBtn = this.whenMenu.getByRole('button', { name: 'schedule', exact: true });
     this.everydayRadio = page.getByRole('radio', { name: 'Everyday' });
     this.weeklyRadio = page.getByRole('radio', { name: 'Weekly' });
     this.sendNowBtn = page.getByRole('button', { name: 'Send Now' });
     this.alert = page.getByRole('alert');
+
+    // Collect browser-side errors so an app crash (blank page) is reported clearly
+    this.pageErrors = [];
+    page.on('pageerror', err => this.pageErrors.push(`pageerror: ${err.message}`));
+    page.on('console', msg => { if (msg.type() === 'error') this.pageErrors.push(`console.error: ${msg.text()}`); });
+    page.on('response', res => { if (res.status() >= 400) this.pageErrors.push(`HTTP ${res.status()}: ${res.request().method()} ${res.url()}`); });
+  }
+
+  // True when the app has unmounted (white screen) – Reports button is always present otherwise
+  async isAppCrashed() {
+    return !(await this.reportsBtn.isVisible());
+  }
+
+  async failIfAppCrashed(context) {
+    await this.page.waitForTimeout(1500);
+    if (await this.isAppCrashed()) {
+      await this.page.screenshot({ path: 'schedule-form-failure.png', fullPage: true }).catch(() => {});
+      const errors = this.pageErrors.length ? this.pageErrors.join('\n  ') : '(no JS errors captured)';
+      throw new Error(`App crashed / blank page after ${context}. Browser errors:\n  ${errors}`);
+    }
   }
 
   async fillSubject(subjectText) {
@@ -131,35 +156,72 @@ export class ReportsPage {
   }
 
   // Waits for the Schedule form to actually render after clicking "schedule".
-  // Re-clicks and retries if it doesn't show up within a short window.
+  // On retry it re-drives the toggle from whatever state the panel is in,
+  // with short timeouts so a missing element fails fast instead of eating the test timeout.
   async waitForScheduleForm(retries = 3) {
+    const formVisible = this.everydayRadio.or(this.weeklyRadio).first();
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        await Promise.race([
-          this.everydayRadio.waitFor({ state: 'visible', timeout: 10000 }),
-          this.weeklyRadio.waitFor({ state: 'visible', timeout: 10000 }),
-        ]);
+        await formVisible.waitFor({ state: 'visible', timeout: 10000 });
         return;
       } catch {
-        console.warn(`Schedule form not visible (attempt ${attempt}/${retries}), re-clicking schedule button`);
-        if (attempt === retries) throw new Error('Schedule form did not render after multiple attempts');
-        await this.scheduleBtn.click();
+        console.warn(`Schedule form not visible (attempt ${attempt}/${retries})`);
+        await this.failIfAppCrashed('clicking "schedule"');
+        if (attempt === retries) {
+          await this.page.screenshot({ path: 'schedule-form-failure.png', fullPage: true }).catch(() => {});
+          console.log('ARIA SNAPSHOT:\n' + await this.page.locator('body').ariaSnapshot().catch(() => 'n/a'));
+          throw new Error('Schedule form did not render after multiple attempts (see schedule-form-failure.png)');
+        }
+        await this.reopenSchedule();
       }
     }
   }
 
-  async openAndFillEmail(emailId) {
+  // Opens the When* dropdown and picks an option, then confirms the toggle shows it.
+  async selectWhen(option) {
+    await this.whenToggle.waitFor({ state: 'visible', timeout: 10000 });
+    if ((await this.whenToggle.innerText()).trim() === option) return;
+    await this.whenToggle.click();
+    const item = this.whenMenu.getByRole('button', { name: option, exact: true });
+    await item.waitFor({ state: 'visible', timeout: 5000 });
+    await item.click();
+    await this.failIfAppCrashed(`selecting "${option}" in When* dropdown`);
+    await expect(this.whenToggle).toHaveText(option, { timeout: 5000 });
+  }
+
+  // Retry path: re-select "schedule" if the modal is still there
+  async reopenSchedule() {
+    if (await this.whenToggle.isVisible()) {
+      await this.selectWhen('now');
+      await this.selectWhen('schedule');
+      return;
+    }
+    console.warn('When* dropdown not found, reopening Reports panel');
+    await this.openReportsModal();
+    await this.selectWhen('schedule');
+  }
+
+  // Clicks REPORTS and waits for the modal's /timezones request to finish.
+  // The schedule form crashes (pa.find on undefined) if "schedule" is picked before timezones load.
+  async openReportsModal() {
+    const timezonesLoaded = this.page.waitForResponse(
+      res => res.url().includes('/timezones') && res.ok(),
+      { timeout: 20000 }
+    ).catch(() => console.warn('timezones response not seen within 20s, continuing'));
     await this.reportsBtn.waitFor({ state: 'visible' });
     await this.reportsBtn.click();
     await expect(this.toTextbox).toBeVisible();
+    await expect(this.whenToggle).toBeVisible();
+    await timezonesLoaded;
+  }
+
+  async openAndFillEmail(emailId) {
+    await this.openReportsModal();
     await this.toTextbox.click();
     await this.toTextbox.fill('');
     await this.toTextbox.fill(emailId);
 
-    await this.nowBtn.waitFor({ state: 'visible' });
-    await this.nowBtn.click();
-    await this.scheduleBtn.waitFor({ state: 'visible' });
-    await this.scheduleBtn.click();
+    await this.selectWhen('schedule');
 
     await this.waitForScheduleForm();
   }
@@ -220,9 +282,7 @@ export class ReportsPage {
   }
 
   async sendNow(emailId) {
-    await this.reportsBtn.waitFor({ state: 'visible' });
-    await this.reportsBtn.click();
-    await expect(this.toTextbox).toBeVisible();
+    await this.openReportsModal();
     await this.toTextbox.click();
     await this.toTextbox.fill('');
     await this.toTextbox.fill(emailId);

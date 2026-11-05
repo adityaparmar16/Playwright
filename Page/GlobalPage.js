@@ -49,26 +49,51 @@ export class DashboardPage {
   }
 
   async navigateToDashboard({ isGlobalAdmin = false } = {}) {
-    await this.page.waitForTimeout(5000);
-    if (isGlobalAdmin) {
-      await expect(this.globalAdminLabel).toBeVisible();
-      await this.analyticsDashboardViewBtn.click();
-    } else {
-      await this.analyticsDashboardBtn.click();
-    }
-    await this.page.waitForTimeout(8000);
+    const entryBtn = isGlobalAdmin ? this.analyticsDashboardViewBtn : this.analyticsDashboardBtn;
+    if (isGlobalAdmin) await expect(this.globalAdminLabel).toBeVisible({ timeout: 30000 });
+    await expect(entryBtn).toBeVisible({ timeout: 30000 });
+
+    const analyticsLoaded = this.waitForAnalyticsResponse();
+    await entryBtn.click();
+    await expect(this.imperialRadio).toBeVisible({ timeout: 30000 });
+    await analyticsLoaded;
+  }
+
+  // Resolves when the dashboard's analytics API call finishes (never throws – just warns on timeout)
+  waitForAnalyticsResponse(timeout = 30000) {
+    return this.page.waitForResponse(
+      res => /\/analytics\?/.test(res.url()) && res.ok(),
+      { timeout }
+    ).catch(() => console.warn(`analytics response not seen within ${timeout / 1000}s, continuing`));
+  }
+
+  // Waits until the Waste Trend chart has rendered its axis labels
+  async waitForChart(timeout = 30000) {
+    await this.chartLabels.first().waitFor({ state: 'visible', timeout }).catch(() => {
+      console.warn('Chart labels not visible yet, continuing');
+    });
   }
 
   async selectUnit(unitName) {
     await this.selectUnitBtn.click();
     await this.unitSearchInput.pressSequentially(unitName, { delay: 100 });
     await this.page.getByText(unitName).click();
+    const analyticsLoaded = this.waitForAnalyticsResponse();
     await this.applyBtn.click();
+    await analyticsLoaded;
+    await this.waitForChart();
   }
 
   async selectImperial() {
+    if (await this.imperialRadio.isChecked()) {
+      await this.waitForChart();
+      return;
+    }
+    const analyticsLoaded = this.waitForAnalyticsResponse(10000);
     await this.imperialRadio.check();
-    await this.page.waitForTimeout(2000);
+    await expect(this.imperialRadio).toBeChecked();
+    await analyticsLoaded;
+    await this.waitForChart();
   }
 
   // Used by UnitAdmin – unit name/number is read directly from the UI
@@ -139,7 +164,6 @@ export class ReportsPage {
   }
 
   async failIfAppCrashed(context) {
-    await this.page.waitForTimeout(1500);
     if (await this.isAppCrashed()) {
       await this.page.screenshot({ path: 'schedule-form-failure.png', fullPage: true }).catch(() => {});
       const errors = this.pageErrors.length ? this.pageErrors.join('\n  ') : '(no JS errors captured)';
@@ -185,8 +209,12 @@ export class ReportsPage {
     const item = this.whenMenu.getByRole('button', { name: option, exact: true });
     await item.waitFor({ state: 'visible', timeout: 5000 });
     await item.click();
-    await this.failIfAppCrashed(`selecting "${option}" in When* dropdown`);
-    await expect(this.whenToggle).toHaveText(option, { timeout: 5000 });
+    try {
+      await expect(this.whenToggle).toHaveText(option, { timeout: 5000 });
+    } catch (err) {
+      await this.failIfAppCrashed(`selecting "${option}" in When* dropdown`);
+      throw err;
+    }
   }
 
   // Retry path: re-select "schedule" if the modal is still there

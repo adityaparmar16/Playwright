@@ -3,22 +3,19 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { LoginPage, DashboardPage, ReportsPage, getDashboardDateRanges, getEntityUnitIdByNumber, fetchDashboardMetrics } from '../../../Page/GlobalPage.js';
+import { testData } from '../../../utils/testData.js';
 
-const ID_NUMBER      = 323;
-const UNIT_NAME_FULL = `Unit one (${ID_NUMBER})`;
-const UNIT_NAME_DB   = 'Unit One';
-const EMAIL_ID       = 'aditya.parmar@ccube.com';
-const SCHEDULES = [
-  { type: 'Everyday', timezone: 'Central European Standard Time' },
-  { type: 'Weekly',   day: 'Monday',    timezone: 'Central European Standard Time' },
-  { type: 'Weekly',   day: 'Wednesday', timezone: 'Eastern Standard Time' },
-];
+const ID_NUMBER      = Number(testData.get('WNG_DEV_UNIT_NUMBER', 323));
+const UNIT_NAME_FULL = `${testData.get('WNG_DEV_UNIT_NAME_UI', 'Unit one')} (${ID_NUMBER})`;
+const UNIT_NAME_DB   = testData.get('WNG_DEV_UNIT_NAME_DB', 'Unit One');
+const EMAIL_ID       = testData.reportEmail;
+const SCHEDULES = testData.schedules;
 
 test.describe('Dashboard Validation – Global Admin (Unit Name + Number)', () => {
   let dbConfig;
 
   test.beforeEach(async ({ page }, testInfo) => {
-    dbConfig = { ...testInfo.config.metadata.globaldev, database: 'wastenotglobal' };
+    dbConfig = { ...testInfo.config.metadata.globaldev, database: testData.wngDbName };
     console.log('DB config set to dev (wastenotglobal)');
 
     const loginPage = new LoginPage(page);

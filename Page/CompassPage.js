@@ -45,9 +45,9 @@ export class CompassPage {
 
     /**
      * Handle MFA — click the SMS OTP button matching last 4 digits, or fall back to first.
-     * @param {string} [phoneHint] - partial phone digits to match (e.g. '6968|68')
+     * @param {string} [phoneHint] - partial phone digits to match; defaults to MFA_PHONE_HINT from .env
      */
-    async handleMfa(phoneHint = '6968|68') {
+    async handleMfa(phoneHint = process.env.MFA_PHONE_HINT || '6968|68') {
         const mfaButtons = this.page.getByRole('button', { name: /Text/i });
         let smsBtn = mfaButtons.filter({ hasText: new RegExp(phoneHint) }).first();
         if (!(await smsBtn.isVisible().catch(() => false))) {

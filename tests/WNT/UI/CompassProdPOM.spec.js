@@ -1,17 +1,18 @@
 import { test } from '@playwright/test';
 import { CompassPage } from '../../../Page/CompassPage.js';
+import { testData } from '../../../utils/testData.js';
 import { buildDateRanges, runWasteQueries } from '../../../utils/bamcoHelpers.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const COMPLEX_ID   = 'C-58001';
-const REPORT_EMAIL = 'aditya.parmar@ccube.com';
+const COMPLEX_ID   = testData.complexId('PROD');
+const REPORT_EMAIL = testData.reportEmail;
 
 test.describe('WasteNot - Complex DB Validation', () => {
     let dbConfig;
 
     test.beforeEach(async ({}, testInfo) => {
-        dbConfig = { ...testInfo.config.metadata.dbproduction, database: 'cafemanager' };
+        dbConfig = { ...testInfo.config.metadata.dbproduction, database: testData.wntDbName };
     });
 
     test('Validate UI data with DB for Complex', async ({ page }) => {

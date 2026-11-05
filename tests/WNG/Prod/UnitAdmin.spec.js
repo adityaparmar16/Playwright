@@ -3,19 +3,16 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { LoginPage, DashboardPage, ReportsPage, getDashboardDateRanges, getEntityUnitIdCaseInsensitive, fetchDashboardMetrics } from '../../../Page/GlobalPage.js';
+import { testData } from '../../../utils/testData.js';
 
-const EMAIL_ID  = 'aditya.parmar@ccube.com';
-const SCHEDULES = [
-  { type: 'Everyday', timezone: 'Central European Standard Time' },
-  { type: 'Weekly',   day: 'Monday',    timezone: 'Central European Standard Time' },
-  { type: 'Weekly',   day: 'Wednesday', timezone: 'Eastern Standard Time' },
-];
+const EMAIL_ID  = testData.reportEmail;
+const SCHEDULES = testData.schedules;
 
 test.describe('Dashboard Validation – Unit Admin | Production', () => {
   let dbConfig;
 
   test.beforeEach(async ({ page }, testInfo) => {
-    dbConfig = { ...testInfo.config.metadata.globalprod, database: 'wastenotglobal' };
+    dbConfig = { ...testInfo.config.metadata.globalprod, database: testData.wngDbName };
     console.log('DB config set to prod (wastenotglobal)');
 
     const loginPage = new LoginPage(page);

@@ -2,6 +2,7 @@ import { test } from "@playwright/test";
 import { queryDatabase } from "../../../utils/db.js";
 import fs from "fs";
 import path from "path";
+import { csv } from "../../../utils/dbReport.js";
 
 const MISMATCH_QUERY = `
 SELECT
@@ -52,21 +53,9 @@ WHERE
     OR NOT (cc.district_name <=> c.district_name);
 `;
 
+// Dry run (default) = find + per-field counts + diff CSV. Replaces "Complex-CC hierarchy mismatch CHECK.spec.js".
 const FIELDS = ["sector", "division", "region", "district"];
 
-const csv = (rows) =>
-  !rows?.length
-    ? ""
-    : [
-        Object.keys(rows[0]).join(","),
-        ...rows.map((row) =>
-          Object.values(row)
-            .map((value) =>
-              `"${String(value ?? "").replace(/"/g, '""')}"`
-            )
-            .join(",")
-        ),
-      ].join("\n");
 
 function buildDiff(mismatches) {
   const diff = [];
@@ -124,6 +113,12 @@ test("Fix complex vs costcenter hierarchy mismatches", async ({}, testInfo) => {
     Complexes: ${
       [...new Set(mismatches.map((x) => x.complex_name))].join(", ") || "None"
     }
+
+    By field:
+      Sector: ${diff.filter((d) => d.field === "sector").length}
+      Division: ${diff.filter((d) => d.field === "division").length}
+      Region: ${diff.filter((d) => d.field === "region").length}
+      District: ${diff.filter((d) => d.field === "district").length}
 
     Before/diff preview saved to:
     ${beforeFile}

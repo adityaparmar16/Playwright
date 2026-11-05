@@ -3,21 +3,8 @@ import { queryDatabase } from '../../../utils/db.js';
 
 import fs from 'fs';
 import path from 'path';
+import { csv as convertToCSV } from '../../../utils/dbReport.js';
 
-// Function to convert query result to CSV format
-function convertToCSV(queryResult) {
-  if (!queryResult || !queryResult.length) return '';
-  const headers = Object.keys(queryResult[0]);
-  const csvRows = queryResult.map(row =>
-    headers
-      .map(header => {
-        const val = row[header] === null || row[header] === undefined ? '' : String(row[header]);
-        return `"${val.replace(/"/g, '""')}"`;
-      })
-      .join(',')
-  );
-  return [headers.join(','), ...csvRows].join('\n');
-}
 
 function pad(n) {
   return String(n).padStart(2, '0');

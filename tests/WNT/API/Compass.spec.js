@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import fs from "fs";
 import dotenv from "dotenv";
-import { fetchAuth } from "../../../utils/apiHelper.js";
+import { fetchWithRetry, parseWastes, requireEnv, validateWasteRecord } from "../../../utils/apiHelper.js";
 
 dotenv.config();
 
@@ -12,7 +12,7 @@ const d = (n) =>
 
 const end = d(1);
 
-const BASE_URL = process.env.COMPASS_PROD_API_URL;
+const BASE_URL = requireEnv("COMPASS_PROD_API_URL");
 
 // Any record with this division_name reports school_id instead of costcenter.
 const SCHOOLS_DIVISION_NAME = "Schools Division";
@@ -46,41 +46,6 @@ function getFieldsForRecord(record) {
   return [...FIELDS_BEFORE_ID_FIELD, idField, ...FIELDS_AFTER_ID_FIELD];
 }
 
-/**
- * Wraps fetchAuth with retries: retries on a non-200 status or a thrown error
- * (network hiccup, transient 5xx/429, etc.) instead of failing on the first flake.
- */
-async function fetchWithRetry(url, { attempts = 3, delayMs = 5000 } = {}) {
-  let lastResponse;
-  let lastError;
-
-  for (let attempt = 1; attempt <= attempts; attempt++) {
-    try {
-      const response = await fetchAuth(url);
-      if (response.status === 200) return response;
-
-      lastResponse = response;
-      console.log(
-        `⚠️ Attempt ${attempt}/${attempts} returned status ${response.status}` +
-          (attempt < attempts ? ` — retrying in ${delayMs}ms` : "")
-      );
-    } catch (err) {
-      lastError = err;
-      console.log(
-        `⚠️ Attempt ${attempt}/${attempts} threw: ${err.message}` +
-          (attempt < attempts ? ` — retrying in ${delayMs}ms` : "")
-      );
-    }
-
-    if (attempt < attempts) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
-  }
-
-  if (lastResponse) return lastResponse; // let the existing status-200 assertion report the final failure
-  throw lastError;
-}
-
 const sample = (arr, n = 20) =>
   [...arr]
     .sort(() => 0.5 - Math.random())
@@ -94,7 +59,8 @@ const sample = (arr, n = 20) =>
 const testCases = [
   ["compass", "compass", true, 1000, 191],
   ["complex", "complex=C-27833,C-57269,C-10107", false, 1000, 366],
-  ["district", "district=CKH16,CKA22", false, 1000, 366],
+  // CKH16/CKA22 returned 0 records; CKH10/CKA40 have data in the same regions
+  ["district", "district=CKH10,CKA40", false, 1000, 366],
   ["region", "region=CKH000,CKA000", false, 1000, 366],
   ["division", "division=CK0000,CH0000", false, 1000, 366],
   ["sector", "sector=F00000,C00000", true, 1000, 366],
@@ -107,7 +73,7 @@ testCases.forEach(([name, query, heavy, limit, startDaysAgo]) => {
   const url =
     `${BASE_URL}?${query}&start=${caseStart}&end=${end}&limit=${limit}`;
 
-  const file = `tests/downloads/${name}.json`;
+  const file = `tests/downloads/compass-${name}.json`;
 
   test(`API ${name}`, async () => {
 
@@ -121,26 +87,23 @@ testCases.forEach(([name, query, heavy, limit, startDaysAgo]) => {
 
     console.log(`🌐 API HIT: ${url}`);
 
+    // Heavy queries can legitimately take longer than the default 90s per request
+    const fetchOpts = heavy ? { timeoutMs: 200000, attempts: 2 } : {};
+
     // ---------------- INITIAL API CALL ----------------
-    const response = await fetchWithRetry(url);
+    const response = await fetchWithRetry(url, fetchOpts);
 
     console.log(`📡 RESPONSE STATUS: ${response.status}`);
 
-    if (response.status !== 200) {
-      console.log("❌ API FAILED");
-      console.log("Response Body:");
-      console.log(response.body);
-    }
-
-    expect(response.status).toBe(200);
-
-    const json = JSON.parse(response.body);
+    const json = parseWastes(response, `Compass ${name}`);
 
     console.log(
-      `📦 TOTAL RECORDS RECEIVED: ${json.wastes?.length || 0}`
+      `📦 TOTAL RECORDS RECEIVED: ${json.wastes.length}`
     );
 
-    const sampledData = sample(json.wastes || []);
+    expect(json.wastes.length, `Compass ${name} returned no records`).toBeGreaterThan(0);
+
+    const sampledData = sample(json.wastes);
 
     console.log(
       `🎯 RANDOM SAMPLE IDS SELECTED FOR VALIDATION:`,
@@ -165,6 +128,12 @@ testCases.forEach(([name, query, heavy, limit, startDaysAgo]) => {
 
         expect(waste).toHaveProperty(field);
       });
+
+      // Type / value checks (number, valid date in range, non-empty ids)
+      expect(
+        validateWasteRecord(waste, { start: caseStart, end }),
+        `Bad values in record ${waste.id}`
+      ).toEqual([]);
     });
 
     // ---------------- SAVE RESPONSE ----------------
@@ -182,19 +151,11 @@ testCases.forEach(([name, query, heavy, limit, startDaysAgo]) => {
     // ---------------- SECOND API CALL ----------------
     console.log("\n🔄 HITTING LIVE API AGAIN FOR DATA COMPARISON");
 
-    const liveResponse = await fetchWithRetry(url);
+    const liveResponse = await fetchWithRetry(url, fetchOpts);
 
     console.log(`📡 LIVE API STATUS: ${liveResponse.status}`);
 
-    if (liveResponse.status !== 200) {
-      console.log("❌ LIVE API FAILED");
-      console.log("Live Response Body:");
-      console.log(liveResponse.body);
-    }
-
-    expect(liveResponse.status).toBe(200);
-
-    const liveJson = JSON.parse(liveResponse.body);
+    const liveJson = parseWastes(liveResponse, `Compass ${name} (live)`);
 
     // ---------------- DATA COMPARISON ----------------
     sampledData.forEach((waste) => {

@@ -27,14 +27,33 @@ JOIN cafemanager.wn_costcenter cc
     ON c.team_name = cc.complex_name
 
 WHERE
-       NOT (c.sector_name   <=> cc.sector_name)
-    OR NOT (c.division_name <=> cc.division_name)
-    OR NOT (c.region_name   <=> cc.region_name)
-    OR NOT (c.district_name <=> cc.district_name)
+    cc.status = 0      -- active cost centers only: delta doesn't handle inactive ones (status = 1)
+    AND (
+           NOT (c.sector_name   <=> cc.sector_name)
+        OR NOT (c.division_name <=> cc.division_name)
+        OR NOT (c.region_name   <=> cc.region_name)
+        OR NOT (c.district_name <=> cc.district_name)
+    )
 
 ORDER BY
     c.team_name,
     cc.team_name;
+`;
+
+// Inactive cost centers (status = 1) with a mismatch – not reported or fixed, only counted for the log
+const INACTIVE_SKIPPED_QUERY = `
+SELECT COUNT(*) AS skipped
+FROM cafemanager.wn_complex c
+JOIN cafemanager.wn_costcenter cc
+    ON c.team_name = cc.complex_name
+WHERE
+    cc.status = 1
+    AND (
+           NOT (c.sector_name   <=> cc.sector_name)
+        OR NOT (c.division_name <=> cc.division_name)
+        OR NOT (c.region_name   <=> cc.region_name)
+        OR NOT (c.district_name <=> cc.district_name)
+    );
 `;
 
 const UPDATE_QUERY = `
@@ -47,10 +66,13 @@ SET
     cc.region_name   = c.region_name,
     cc.district_name = c.district_name
 WHERE
-       NOT (cc.sector_name   <=> c.sector_name)
-    OR NOT (cc.division_name <=> c.division_name)
-    OR NOT (cc.region_name   <=> c.region_name)
-    OR NOT (cc.district_name <=> c.district_name);
+    cc.status = 0      -- never touch inactive cost centers (status = 1)
+    AND (
+           NOT (cc.sector_name   <=> c.sector_name)
+        OR NOT (cc.division_name <=> c.division_name)
+        OR NOT (cc.region_name   <=> c.region_name)
+        OR NOT (cc.district_name <=> c.district_name)
+    );
 `;
 
 // Dry run (default) = find + per-field counts + diff CSV. Replaces "Complex-CC hierarchy mismatch CHECK.spec.js".
@@ -90,6 +112,11 @@ test("Fix complex vs costcenter hierarchy mismatches", async ({}, testInfo) => {
   // ---------------- FIND MISMATCHES ----------------
 
   const mismatches = await queryDatabase(MISMATCH_QUERY, db);
+
+  const [{ skipped = 0 } = {}] = await queryDatabase(INACTIVE_SKIPPED_QUERY, db);
+  if (Number(skipped) > 0) {
+    console.log(`Skipped ${skipped} mismatch(es) on inactive cost centers (status = 1) – delta doesn't handle them.`);
+  }
 
   if (mismatches.length === 0) {
     console.log("No mismatches found. Nothing to fix.");

@@ -1,70 +1,43 @@
 import { test } from '@playwright/test';
-import { CompassPage } from '../../../Page/CompassPage.js';
-import { testData } from '../../../utils/testData.js';
-import { buildDateRanges, runWasteQueries } from '../../../utils/bamcoHelpers.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const COMPLEX_ID   = testData.complexId('PROD');
-const REPORT_EMAIL = testData.reportEmail;
+import { testData } from '../../../utils/testData.js';
+import { getCompassAdmins } from '../../../utils/compassAdmins.js';
+import { runCompassFlow } from '../../../utils/compassFlow.js';
+
+const ENV    = 'PROD';
+const ADMINS = getCompassAdmins(ENV); // admin1 = current global admin; add more in .env (see utils/compassAdmins.js)
 
 test.describe('WasteNot - Complex DB Validation', () => {
+    // One admin after another in the same browser worker – each needs its own OTP, so no parallel logins
+    test.describe.configure({ mode: 'default' });
+
     let dbConfig;
 
     test.beforeEach(async ({}, testInfo) => {
         dbConfig = { ...testInfo.config.metadata.dbproduction, database: testData.wntDbName };
     });
 
-    test('Validate UI data with DB for Complex', async ({ page }) => {
-        test.setTimeout(360000);
-
-        const compass = new CompassPage(page);
-
-        // ── 1. Login ────────────────────────────────────────────────
-        await compass.goto(process.env.COMPASS_PROD_URL, process.env.WASTENOT_LOGIN_ID);
-        await compass.submitLoginAndEnterPassword(process.env.WASTENOT_PASSWORD);
-
-        if (process.env.DEBUG_MFA === 'true') await page.pause();
-
-        await compass.handleMfa();
-        await compass.handleOtp(process.env.WASTENOT_OTP);
-        await compass.dismissStaySignedIn();
-
-        // ── 2. Assert dashboard loaded ───────────────────────────────
-        await compass.assertDashboardVisible();
-        await compass.assertIframeElementsVisible();
-
-        // ── 3. Select complex ────────────────────────────────────────
-        await compass.selectComplex(COMPLEX_ID);
-
-        // ── 4. Assert waste section visible ──────────────────────────
-        await compass.assertWasteSectionVisible();
-
-        // ── 5. Date ranges & DB queries ──────────────────────────────
-        const dates = buildDateRanges({ useYesterdayAsCurrentEnd: true });
-        console.log(dates);
-
-        const { dbPast6Months, dbCurrentMonth, dbLastYear } =
-            await runWasteQueries(COMPLEX_ID, dates, dbConfig);
-
-        // ── 6. Assert iframe lbs values ──────────────────────────────
-        await page.waitForTimeout(5000);
-        await compass.assertIframeLbsValue(dbPast6Months,  'Past 6 Months');
-        await compass.assertIframeLbsValue(dbCurrentMonth, 'Current Month', true);
-        await compass.assertIframeLbsValue(dbLastYear,     'Last Year');
-
-        // ── 7. Send Now report ───────────────────────────────────────
-        await compass.sendNowReport(
-            [REPORT_EMAIL],
-            'Compass Production - Now Report via Automation'
-        );
-
-        // ── 8. Schedule report ───────────────────────────────────────
-        await compass.scheduleReport({
-            email     : REPORT_EMAIL,
-            frequency : 'Daily',
-            dateRange : 'Fiscal Month to Date',
-            subject   : 'Compass Production - Scheduled Report via Automation',
+    if (!ADMINS.length) {
+        test('Compass admins configured', () => {
+            throw new Error('No Compass admins found – set WASTENOT_LOGIN_ID or COMPASS_ADMIN1_LOGIN_ID in .env (COMPASS_ADMINS filter may exclude all)');
         });
-    });
+    }
+
+    for (const admin of ADMINS) {
+        test(`${{ login: 'Login + tracking calendar', calendar: 'Login + tracking calendar + cost center', full: 'Validate UI data with DB for Complex' }[admin.mode]} – ${admin.key} (${admin.label})`, async ({ page }) => {
+            test.setTimeout(360000);
+
+            await runCompassFlow({
+                page,
+                admin,
+                url             : process.env.COMPASS_PROD_URL,
+                dbConfig,
+                reportEmail     : testData.reportEmail,
+                nowSubject      : `Compass Production - Now Report via Automation – ${admin.label}`,
+                scheduleSubject : `Compass Production - Scheduled Report via Automation – ${admin.label}`,
+            });
+        });
+    }
 });

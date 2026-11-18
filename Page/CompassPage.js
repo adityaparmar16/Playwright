@@ -43,25 +43,43 @@ export class CompassPage {
         await this.page.getByRole('button', { name: /^Sign in$/i }).click();
     }
 
-    /**
-     * Handle MFA — click the SMS OTP button matching last 4 digits, or fall back to first.
-     * @param {string} [phoneHint] - partial phone digits to match; defaults to MFA_PHONE_HINT from .env
-     */
     async handleMfa(phoneHint = process.env.MFA_PHONE_HINT || '6968|68') {
-        const mfaButtons = this.page.getByRole('button', { name: /Text/i });
-        let smsBtn = mfaButtons.filter({ hasText: new RegExp(phoneHint) }).first();
+        // Accounts differ: some get a list of methods ("Text +XX XXX68"), others go straight to
+        // an Authenticator push ("Approve sign in request" with a number to match). Wait for whichever appears.
+        const textButtons = this.page.getByRole('button', { name: /Text/i });
+        const pushPrompt  = this.page.getByText(/Approve sign in request/i);
+        await textButtons.first().or(pushPrompt).first().waitFor({ state: 'visible', timeout: 60000 });
+
+        if (await pushPrompt.isVisible().catch(() => false)) {
+            this.mfaMode = 'push';
+            const numberEl = this.page.locator('#idRichContext_DisplaySign');
+            const number = (await numberEl.innerText({ timeout: 5000 }).catch(() => '')).trim();
+            console.log(`📱 Approve the sign-in in Microsoft Authenticator${number ? ` – enter number ${number}` : ''} (you have 4 minutes)...`);
+            return;
+        }
+
+        this.mfaMode = 'sms';
+        let smsBtn = textButtons.filter({ hasText: new RegExp(phoneHint) }).first();
         if (!(await smsBtn.isVisible().catch(() => false))) {
-            smsBtn = mfaButtons.first();
+            smsBtn = textButtons.first();
         }
         await expect(smsBtn).toBeVisible();
         await smsBtn.click();
     }
 
     /**
-     * Fill OTP automatically if provided, or wait for manual entry.
+     * Finish MFA. SMS: fill the OTP if provided, else wait for it to be typed manually.
+     * Authenticator push: wait for the approval on the phone.
      * @param {string|undefined} otp
      */
     async handleOtp(otp) {
+        if (this.mfaMode === 'push') {
+            await this.page.bringToFront();
+            await this.waitForMicrosoftLoginToFinish(240000);
+            console.log('✅ Login completed after Authenticator approval');
+            return;
+        }
+
         const otpInput = this.page.locator(
             'input[name*="otc"], input[id*="otc"], input[aria-label*="code" i], input[type="tel"]'
         ).first();
@@ -110,6 +128,24 @@ export class CompassPage {
 
     // ── Dashboard UI Assertions ────────────────────────────────────────
 
+    /**
+     * Scope-agnostic "logged in" check that works for every admin level:
+     * header with Exit link, CLEAR ALL filter bar, iframe DASHBOARD/REPORTS, and optionally a text such as the
+     * access breadcrumb ("CCC ADMIN") or the user's name.
+     * @param {string} [expectText]
+     */
+    async assertLoggedIn(expectText = '') {
+        await expect(this.page.getByText('Exit', { exact: true }).filter({ visible: true }).first()).toBeVisible({ timeout: 90000 });
+        // the page can hold more than one CLEAR ALL (e.g. after a reload) – any visible one will do
+        await expect(this.page.getByText('CLEAR ALL').filter({ visible: true }).first()).toBeVisible({ timeout: 30000 });
+        await this.dashboardBtn.waitFor({ state: 'visible', timeout: 120000 });
+        await expect(this.reportsBtn).toBeVisible({ timeout: 30000 });
+        if (expectText) {
+            // visible copy only – the same text also sits hidden inside closed filter dropdowns
+            await expect(this.page.getByText(expectText).filter({ visible: true }).first()).toBeVisible({ timeout: 30000 });
+        }
+    }
+
     /** Assert the top-level Compass navigation and filter labels are visible. */
     async assertDashboardVisible() {
         await expect(this.page.locator('[id="row wastenot-nav"]')).toContainText('COMPASS', { timeout: 60000 });
@@ -141,15 +177,29 @@ export class CompassPage {
      * @param {string} confirmText - text of the confirm button (default: 'COMPASS')
      */
     async selectComplex(complexId, confirmText = 'COMPASS') {
-        await this.page.getByRole('button', { name: 'All Complexes' }).click();
+        // Admins whose access is limited to one complex may not get the "All Complexes" filter at all –
+        // their data is already scoped, so there is nothing to select.
+        const allComplexesBtn = this.page.getByRole('button', { name: 'All Complexes' });
+        const hasFilter = await allComplexesBtn.waitFor({ state: 'visible', timeout: 15000 }).then(() => true).catch(() => false);
+        if (!hasFilter) {
+            console.warn(`"All Complexes" filter not shown for this admin – assuming access is already scoped to ${complexId}`);
+            return;
+        }
+        await allComplexesBtn.click();
         await this.page.getByRole('textbox', { name: 'Search' }).fill(complexId);
 
         const option = this.page.getByRole('option').filter({ hasText: complexId }).first();
         await expect(option).toBeVisible();
         await option.click();
 
-        // Close the dropdown by clicking outside it (applies the selection).
-        // Clicking the "COMPASS" text hung on pages where that text isn't visible (e.g. legacy.cafebonappetit.com).
+        await this.closeFilterDropdown();
+    }
+
+    /**
+     * Closes an open filter dropdown by clicking outside it (that applies the selection).
+     * Clicking the "COMPASS" text hung on pages where that text isn't visible (e.g. legacy.cafebonappetit.com).
+     */
+    async closeFilterDropdown() {
         const searchBox = this.page.getByRole('textbox', { name: 'Search' });
         const label = this.page.getByText('Sector', { exact: true }).first();
         if (await label.isVisible().catch(() => false)) {
@@ -161,6 +211,188 @@ export class CompassPage {
             await this.page.keyboard.press('Escape');
         }
         await expect(searchBox).toBeHidden({ timeout: 10000 });
+    }
+
+    // ── Filters, tracking calendar & cost center ───────────────────────
+
+    /** The dropdown button under a filter label ("Complex", "Cost Center", "Kitchen", ...), whatever it currently shows. */
+    filterButton(label) {
+        return this.page.getByText(label, { exact: true }).filter({ visible: true }).first().locator('xpath=following::button[1]');
+    }
+
+    /** Current value shown on a filter, e.g. "All Kitchens" or "CBC MAIN KITCHEN". */
+    async filterValue(label) {
+        return (await this.filterButton(label).innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
+    }
+
+    /** True when the admin has a Complex filter (complex-level admins don't – their complex is fixed). */
+    async hasComplexFilter() {
+        return this.page.getByText('Complex', { exact: true }).filter({ visible: true }).first().isVisible().catch(() => false);
+    }
+
+    /** Opens a filter, clicks the option with this text (selects it, or deselects it if already selected), closes it. */
+    async toggleFilterOption(label, optionText) {
+        await this.filterButton(label).click();
+        const option = this.page.getByRole('option').filter({ hasText: optionText, visible: true }).first();
+        await expect(option).toBeVisible({ timeout: 15000 });
+        await option.click();
+        await this.closeFilterDropdown();
+    }
+
+    /** Waits up to `timeout` for the "<Month> <Year> Tracking" calendar (checked on the page and inside the dashboard iframe). */
+    async isTrackingCalendarVisible(timeout = 15000) {
+        const title = /\b[A-Z][a-z]+ \d{4} Tracking\b/;
+        const inPage  = this.page.getByText(title).filter({ visible: true }).first();
+        const inFrame = this.iframeLocator.getByText(title).filter({ visible: true }).first();
+        const deadline = Date.now() + timeout;
+        do {
+            if (await inPage.isVisible().catch(() => false) || await inFrame.isVisible().catch(() => false)) return true;
+            await this.page.waitForTimeout(500);
+        } while (Date.now() < deadline);
+        return false;
+    }
+
+    async assertTrackingCalendarVisible(context, timeout = 30000) {
+        if (!(await this.isTrackingCalendarVisible(timeout))) {
+            throw new Error(`Tracking calendar not visible ${context}`);
+        }
+        console.log(`📅 Tracking calendar visible ${context}`);
+    }
+
+    /** Clicks CLEAR ALL and waits until the Kitchen filter is back to "All Kitchens". */
+    async clearAllFilters() {
+        await this.page.getByText('CLEAR ALL', { exact: true }).filter({ visible: true }).first().click();
+        const deadline = Date.now() + 15000;
+        do {
+            if (/^All Kitchens$/i.test(await this.filterValue('Kitchen'))) return;
+            await this.page.waitForTimeout(500);
+        } while (Date.now() < deadline);
+    }
+
+    // ── Tracking calendar: previous-month navigation ───────────────────
+
+    /** The visible tracking calendar header (month heading + ‹ › arrows). */
+    trackingCalendar() {
+        return this.page.locator('.calendar-wrapper').filter({ visible: true }).first();
+    }
+
+    /** Month shown on the tracking calendar, e.g. { month: 'November', year: 2026, label: 'November 2026' }. */
+    async calendarMonth() {
+        const text = await this.trackingCalendar().locator('.heading-text').innerText();
+        const m = text.match(/([A-Z][a-z]+)\s+(\d{4})\s+Tracking/);
+        if (!m) throw new Error(`Unexpected tracking calendar heading: "${text}"`);
+        return { month: m[1], year: Number(m[2]), label: `${m[1]} ${m[2]}` };
+    }
+
+    /**
+     * Users can view the current month and ONE previous month:
+     *  1. calendar opens on the current month – ‹ enabled, › disabled
+     *  2. ‹ shows the previous month – ‹ now disabled, › enabled
+     *  3. ‹ again does not go further back
+     *  4. › returns to the current month – › disabled again
+     */
+    async checkCalendarPreviousMonth() {
+        const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+            'August', 'September', 'October', 'November', 'December'];
+        const cal = this.trackingCalendar();
+        const heading = cal.locator('.heading-text');
+        const prev = cal.locator('.nav-arrow.prev-month');
+        const next = cal.locator('.nav-arrow.next-month');
+
+        await expect(cal).toBeVisible({ timeout: 30000 });
+
+        // 1. current month (US Eastern or IST – both accepted around month boundaries)
+        const current = await this.calendarMonth();
+        const today = ['America/New_York', 'Asia/Kolkata'].map((timeZone) =>
+            new Date().toLocaleString('en-US', { timeZone, month: 'long', year: 'numeric' }));
+        expect(today, `Tracking calendar should open on the current month, shows ${current.label}`).toContain(current.label);
+        await expect(next, '› should be disabled on the current month').toHaveClass(/\bdisabled\b/);
+        await expect(prev, '‹ should be enabled on the current month').not.toHaveClass(/\bdisabled\b/);
+
+        // 2. one month back
+        const i = MONTHS.indexOf(current.month);
+        const previous = i === 0 ? `December ${current.year - 1}` : `${MONTHS[i - 1]} ${current.year}`;
+        await prev.click();
+        await expect(heading).toContainText(`${previous} Tracking`, { timeout: 15000 });
+        await expect(prev, '‹ should be disabled on the previous month').toHaveClass(/\bdisabled\b/);
+        await expect(next, '› should be enabled on the previous month').not.toHaveClass(/\bdisabled\b/);
+        console.log(`📅 ‹ → ${previous} Tracking shown`);
+
+        // 3. cannot go further back
+        await prev.click({ force: true });
+        await this.page.waitForTimeout(1000);
+        await expect(heading, 'calendar must not go back more than one month').toContainText(`${previous} Tracking`);
+
+        // 4. back to the current month
+        await next.click();
+        await expect(heading).toContainText(`${current.label} Tracking`, { timeout: 15000 });
+        await expect(next, '› should be disabled again on the current month').toHaveClass(/\bdisabled\b/);
+        console.log(`📅 › → back to ${current.label} Tracking (only one previous month allowed ✓)`);
+    }
+
+    /**
+     * Tries the cost centers in the Cost Center filter one by one until it finds one with the full
+     * hierarchy set up: selecting it fills in the Kitchen filter and the tracking calendar is shown.
+     * A cost center with no kitchen leaves Kitchen on "All Kitchens" and hides the calendar; the test then
+     * clicks CLEAR ALL, calls `resetScope` (e.g. re-select the complex) and tries the next one.
+     * @param {{ maxTries?: number, resetScope?: () => Promise<void> }} [opts]
+     * @returns {Promise<{ costCenter: string, kitchen: string }>}
+     */
+    async selectCostCenterWithKitchen({ maxTries = 15, resetScope } = {}) {
+        const ccButton = this.filterButton('Cost Center');
+        await expect(ccButton).toBeVisible({ timeout: 30000 });
+
+        // Read the cost centers on offer (already limited to the selected complex / the admin's access).
+        // Options read like "36209CCC MGMT": the leading number is the cost center code. "All Cost Centers" (select-all) is skipped.
+        await ccButton.click();
+        const options = this.page.getByRole('option').filter({ visible: true }); // only the open dropdown's options
+        await expect(options.first()).toBeVisible({ timeout: 15000 });
+        const costCenters = [];
+        for (const text of await options.allInnerTexts()) {
+            const m = text.replace(/\s+/g, ' ').trim().match(/^(\d+)\s*(.*)$/);
+            if (m && !costCenters.some((c) => c.code === m[1])) costCenters.push({ code: m[1], name: m[2] });
+        }
+        await this.closeFilterDropdown();
+        console.log(`🏷️  ${costCenters.length} cost center(s): ${costCenters.map((c) => `${c.code} ${c.name}`).join(' | ')}`);
+        if (!costCenters.length) throw new Error('Cost Center filter has no cost centers to choose from');
+
+        const tried = [];
+        for (const cc of costCenters.slice(0, maxTries)) {
+            const label = `${cc.code} ${cc.name}`.trim();
+
+            // Select it (matched by its code, which is unique)
+            await ccButton.click();
+            const option = this.page.getByRole('option').filter({ visible: true, hasText: new RegExp(`^\\s*${cc.code}`) }).first();
+            await expect(option).toBeVisible({ timeout: 15000 });
+            await option.click();
+            await this.closeFilterDropdown();
+
+            // A fully set-up cost center auto-fills its kitchen
+            let kitchen = '';
+            const deadline = Date.now() + 10000;
+            do {
+                kitchen = await this.filterValue('Kitchen');
+                if (kitchen && !/^All Kitchens$/i.test(kitchen)) break;
+                await this.page.waitForTimeout(500);
+            } while (Date.now() < deadline);
+            const hasKitchen = kitchen && !/^All Kitchens$/i.test(kitchen);
+
+            if (hasKitchen && await this.isTrackingCalendarVisible(15000)) {
+                console.log(`✅ Cost center "${label}" → kitchen "${kitchen}" – tracking calendar visible`);
+                return { costCenter: label, kitchen };
+            }
+
+            const calendarShown = await this.isTrackingCalendarVisible(1000);
+            console.log(`↷ Cost center "${label}": ${hasKitchen ? `kitchen "${kitchen}" but no tracking calendar` : 'no kitchen set up'}` +
+                `${calendarShown ? '' : ' (calendar hidden)'} – trying the next one`);
+            tried.push(label);
+
+            // Back to a clean scope before the next try
+            await this.clearAllFilters();
+            if (resetScope) await resetScope();
+        }
+
+        throw new Error(`No cost center with a kitchen set up showed the tracking calendar. Tried: ${tried.join(', ') || 'none'}`);
     }
 
     // ── Post-filter Dashboard Assertions ──────────────────────────────
@@ -193,8 +425,12 @@ export class CompassPage {
             console.log(`✓ ${label} verified in UI: ${value} lbs`);
         } catch {
             console.warn(`✗ ${label} (${value} lbs) not visible in UI`);
-            const shown = await this.iframeLocator.getByText(/\d[\d,.]*\s*lbs/).allInnerTexts().catch(() => []);
-            console.warn(`   lbs values visible in UI: ${[...new Set(shown.map(t => t.trim()))].join(' | ') || '(none)'}`);
+            // Diagnostic only – must never fail the test
+            try {
+                const shown = await this.iframeLocator.getByText(/\d[\d,.]*\s*lbs/).allInnerTexts();
+                const values = [...new Set((shown || []).map((t) => String(t ?? '').replace(/\s+/g, ' ').trim()).filter(Boolean))];
+                console.warn(`   lbs values visible in UI: ${values.join(' | ') || '(none)'}`);
+            } catch { /* ignore */ }
         }
     }
 

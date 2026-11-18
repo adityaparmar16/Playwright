@@ -10,6 +10,7 @@ tests/.DS_Store
 tests/downloads/
 .DS_Store
 tests/WNT/.DS_Store
+Claude outputs
 downloads/
 .cursor/
 .env

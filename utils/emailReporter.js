@@ -152,7 +152,7 @@ export default class EmailReporter {
 
   // Turns test folders into readable names, e.g. "WNG/Dev" → "Waste Not Global – Dev"
   suiteName(s) {
-    const apps = { WNG: 'Waste Not Global', WNT: 'Waste Not' };
+    const apps = { WNG: 'Waste Not Global', WNT: 'Waste Not US' };
     const groups = new Map(); // app name -> Set of areas (Dev, Stag, API, ...)
     for (const f of s.folders) {
       const [app, area] = f.split('/');

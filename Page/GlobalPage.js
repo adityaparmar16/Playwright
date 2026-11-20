@@ -108,23 +108,55 @@ export class DashboardPage {
     };
   }
 
-  async checkValueInChartLabels(expectedValue) {
+  /**
+   * Reads the Waste Trend bars. Each x-axis label is "<value> lbs" + the period, e.g.
+   * "4,987 lbs Nov 2025", "7 lbs Nov 2026", "6,093 lbs Past 6 Months".
+   * @returns {Promise<{ text: string, value: number|null }[]>}
+   */
+  async readWasteTrendBars() {
     await this.chartLabels.first().waitFor({ timeout: 10000 });
-    let labels = await this.chartLabels.allTextContents();
-    labels = labels.map(l => l.replace(/\s+/g, ' ').trim());
-    return labels.some(l => l.includes(expectedValue.toString()));
+    const texts = (await this.chartLabels.allTextContents())
+      .map((t) => t.replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+    return [...new Set(texts)].map((text) => {
+      const m = text.match(/([\d,]+(?:\.\d+)?)\s*(lbs|kg)/i);
+      return { text, value: m ? Number(m[1].replace(/,/g, '')) : null };
+    });
   }
 
+  /**
+   * Compares each DB value with the bar for the same period.
+   * A mismatch is recorded as a soft failure: the test carries on (reports etc.) and is marked failed at the end.
+   * Tolerance (lbs) for rounding differences: WNG_LBS_TOLERANCE (default 0).
+   */
   async assertChartValues(dbValues) {
-    for (const [label, value] of Object.entries(dbValues)) {
-      if (value) {
-        const exists = await this.checkValueInChartLabels(value);
-        if (exists) {
-          console.log(`${label} verified in UI: ${value} lbs`);
-        } else {
-          console.warn(`${label} (${value} lbs) not visible in UI`);
-        }
+    const tolerance = Number(process.env.WNG_LBS_TOLERANCE || 0);
+    const bars = await this.readWasteTrendBars();
+    console.log(`Waste Trend bars in UI: ${bars.map((b) => b.text).join(' | ') || '(none)'}`);
+
+    const now = new Date();
+    const short = (d) => d.toLocaleString('en-US', { month: 'short' });
+    const long  = (d) => d.toLocaleString('en-US', { month: 'long' });
+    const monthYear = (d) => new RegExp(`\\b(${short(d)}|${long(d)})\\s+${d.getFullYear()}\\b`, 'i');
+    const lastYear = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+    const periods = {
+      'Past 6 Months': /past\s*6\s*months?/i,
+      'Current Month': monthYear(now),
+      'Last Year':     monthYear(lastYear),
+    };
+
+    for (const [label, dbValue] of Object.entries(dbValues)) {
+      const bar = bars.find((b) => periods[label]?.test(b.text) && b.value !== null)
+               || bars.find((b) => periods[label]?.test(b.text));
+      if (!bar) {
+        expect.soft(false, `${label}: no Waste Trend bar found for this period (DB ${dbValue} lbs)`).toBe(true);
+        console.warn(`✗ ${label}: bar not found in UI (DB ${dbValue} lbs)`);
+        continue;
       }
+      const uiValue = bar.value ?? 0; // a bar with no value means no data – compare as 0
+      const ok = Math.abs(uiValue - dbValue) <= tolerance;
+      expect.soft(ok, `${label}: UI ${uiValue} lbs vs DB ${dbValue} lbs`).toBe(true);
+      console[ok ? 'log' : 'warn'](`${ok ? '✓' : '✗'} ${label}: UI ${uiValue} lbs vs DB ${dbValue} lbs`);
     }
   }
 }
@@ -357,38 +389,51 @@ export function getDashboardDateRanges() {
 //  DB HELPERS
 // ═══════════════════════════════════════════════════════════════
 
+const sqlString = (v) => String(v ?? '').replace(/\\/g, '\\\\').replace(/'/g, "''");
+
+// Several entity_units can share a name (e.g. in different organizations) – make that visible
+async function pickUnitId(rows, desc, dbConfig) {
+  if (!rows.length) throw new Error(`Entity Unit ID not found for unit: ${desc}`);
+  if (rows.length > 1) {
+    let names = {};
+    try { // best effort: which entity each match belongs to
+      const ids = rows.map((r) => Number(r.id)).filter(Number.isFinite);
+      const info = await queryDatabase(
+        `SELECT eu.id, e.name FROM entity_units eu JOIN entities e ON e.id = eu.entity_id WHERE eu.id IN (${ids.join(',')})`, dbConfig);
+      names = Object.fromEntries(info.map((r) => [r.id, r.name]));
+    } catch { /* column/table differs – just list the ids */ }
+    console.warn(`⚠️ ${rows.length} units match ${desc}: ` +
+      rows.map((r) => `id ${r.id}${r.id_number ? ` (#${r.id_number})` : ''}${names[r.id] ? ` – ${names[r.id]}` : ''}`).join(', ') +
+      ` – using id ${rows[0].id}. Use the "name + number" lookup to pick an exact unit.`);
+  }
+  console.log(`Entity Unit ID for ${desc}: ${rows[0].id}`);
+  return rows[0].id;
+}
+
+const UNIT_COLUMNS = 'id, id_number FROM entity_units';
+
 export async function getEntityUnitId(unitName, dbConfig) {
-  const result = await queryDatabase(
-    `SELECT id FROM entity_units WHERE name = '${unitName}' LIMIT 1;`,
+  const rows = await queryDatabase(
+    `SELECT ${UNIT_COLUMNS} WHERE name = '${sqlString(unitName)}' ORDER BY id;`,
     dbConfig
   );
-  const id = result[0]?.id;
-  if (!id) throw new Error(`Entity Unit ID not found for unit: ${unitName}`);
-  console.log(`Entity Unit ID for "${unitName}": ${id}`);
-  return id;
+  return pickUnitId(rows, `"${unitName}"`, dbConfig);
 }
 
 export async function getEntityUnitIdByNumber(unitName, idNumber, dbConfig) {
-  const result = await queryDatabase(
-    `SELECT id FROM entity_units WHERE name = '${unitName}' AND id_number = '${idNumber}' LIMIT 1;`,
+  const rows = await queryDatabase(
+    `SELECT ${UNIT_COLUMNS} WHERE name = '${sqlString(unitName)}' AND id_number = '${sqlString(idNumber)}' ORDER BY id;`,
     dbConfig
   );
-  const id = result[0]?.id;
-  if (!id) throw new Error(`Entity Unit ID not found for unit: ${unitName} (${idNumber})`);
-  console.log(`Entity Unit ID for "${unitName}" (${idNumber}): ${id}`);
-  return id;
+  return pickUnitId(rows, `"${unitName}" (${idNumber})`, dbConfig);
 }
 
 export async function getEntityUnitIdCaseInsensitive(unitName, idNumber, dbConfig) {
-  const safe = unitName.replace(/'/g, "''");
-  const result = await queryDatabase(
-    `SELECT id FROM entity_units WHERE LOWER(name) = LOWER('${safe}') AND id_number = '${idNumber}' LIMIT 1;`,
+  const rows = await queryDatabase(
+    `SELECT ${UNIT_COLUMNS} WHERE LOWER(name) = LOWER('${sqlString(unitName)}') AND id_number = '${sqlString(idNumber)}' ORDER BY id;`,
     dbConfig
   );
-  const id = result[0]?.id;
-  if (!id) throw new Error(`Entity Unit ID not found for unit: ${unitName} (${idNumber})`);
-  console.log(`Entity Unit ID for "${unitName}" (${idNumber}): ${id}`);
-  return id;
+  return pickUnitId(rows, `"${unitName}" (${idNumber})`, dbConfig);
 }
 
 export async function fetchDashboardMetrics(entityUnitId, dateRanges, dbConfig) {
@@ -431,7 +476,9 @@ export async function fetchDashboardMetrics(entityUnitId, dateRanges, dbConfig) 
       GROUP BY year, month
       HAVING COUNT(DISTINCT day) >= 12
     )
-    SELECT *, (SELECT AVG(avg_lbs_per_day) FROM MonthlyAverages) AS overall_avg_lbs_per_day
+    -- Same as the dashboard (and the WNT query): total waste ÷ total tracked days over the months with 12+ tracked days.
+    -- Not the average of the monthly averages – that weights a 12-day month the same as a 31-day month.
+    SELECT *, (SELECT SUM(total_calculated_amount) / SUM(total_days) FROM MonthlyAverages) AS overall_avg_lbs_per_day
     FROM MonthlyAverages;
   `;
 

@@ -10,10 +10,9 @@ const get = (name, fallback) => {
   return v !== undefined && v !== '' ? v : fallback;
 };
 
+// One daily (Everyday) scheduled report per run. Add more via WNG_SCHEDULES_JSON if ever needed.
 const DEFAULT_SCHEDULES = [
   { type: 'Everyday', timezone: 'Central European Standard Time' },
-  { type: 'Weekly',   day: 'Monday',    timezone: 'Central European Standard Time' },
-  { type: 'Weekly',   day: 'Wednesday', timezone: 'Eastern Standard Time' },
 ];
 
 function parseSchedules() {
@@ -39,6 +38,7 @@ export const testData = {
 
   /** Schedules created by the WNG Reports tests */
   schedules: parseSchedules(),
+
 
   /**
    * WNG unit name. Looks up WNG_<ENV>_<ROLE>_UNIT_NAME, then WNG_<ENV>_UNIT_NAME, then the fallback.

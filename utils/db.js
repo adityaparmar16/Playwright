@@ -8,7 +8,10 @@ export async function queryDatabase(query, dbConfig) {
     database: dbConfig.database
   });
 
-  const [rows] = await connection.execute(query);
-  await connection.end();
-  return rows;
+  try {
+    const [rows] = await connection.execute(query);
+    return rows;
+  } finally {
+    await connection.end(); // closed even when the query fails
+  }
 }

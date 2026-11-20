@@ -3,6 +3,13 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// DB scripts and API tests don't use a browser – run them only once (in the chromium project),
+// not three times. Matters most for scripts that change data (e.g. CONFIRM_DELETE / CONFIRM_FIX).
+const NON_BROWSER_TESTS = ['**/DB/**', '**/API/**'];
+// Translation tests switch the account language, so they run on Chromium only –
+// parallel runs in other browsers would change the same account's language underneath them.
+const CHROMIUM_ONLY_TESTS = ['**/Translations/**'];
+
 export default defineConfig({
   timeout: 90000,
   testDir: './tests',
@@ -28,10 +35,12 @@ export default defineConfig({
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
+      testIgnore: [...NON_BROWSER_TESTS, ...CHROMIUM_ONLY_TESTS],
     },
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
+      testIgnore: [...NON_BROWSER_TESTS, ...CHROMIUM_ONLY_TESTS],
     },
   ],
 

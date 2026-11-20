@@ -1,0 +1,245 @@
+WASTE NOT GLOBAL (WNG) - TRANSLATION ISSUES
+============================================
+Source      : Automated translation baselines (tests/WNG/Translations/baselines)
+Captured    : 20 Nov 2026
+Environments: WNG Global Dev and Stag (issues seen in both)
+Languages   : Français (Canadien), Deutsch, Português, Italiano, Türkçe, Polski
+Screens     : Home page, Analytics Dashboard, Reports modal (Now / Schedule), Send Now message
+
+Steps to reproduce (all tickets):
+  1. Log in as Entity / Unit / Org / Global admin
+  2. Hamburger menu -> My Account -> Language -> select <language> -> Save
+  3. Open Home page, Analytics Dashboard and Reports modal (Now and Schedule)
+
+Note: "Suggested" fixes should be confirmed by a native speaker / translation vendor.
+"#" in the texts below stands for a number.
+
+
+############################################################################
+PART A - ISSUES AFFECTING MULTIPLE LANGUAGES
+############################################################################
+
+----------------------------------------------------------------------------
+TICKET 1 - "tons" is not translated in any language
+----------------------------------------------------------------------------
+Where   : Analytics Dashboard -> Waste Impact / Total Waste
+Current :
+  FR  "tons de déchets", "tons d'équivalent de CO2"
+  DE  "tons von Abfall", "tons von CO2 eq"
+  PT  "tons de desperdício", "tons de CO2 eq"
+  IT  "tons di rifiuti", "tons di CO2 eq"
+  TR  "tons atıkların", "tons CO2 eşdeğeri"
+  PL  "tons odpadów", "tons ekwiwalentu CO2"
+Suggested: FR "tonnes" | DE "Tonnen" | PT "toneladas" | IT "tonnellate" | TR "ton" | PL "ton"
+
+----------------------------------------------------------------------------
+TICKET 2 - Dropdown placeholders built as "Select a" + label -> wrong grammar
+----------------------------------------------------------------------------
+Where   : Analytics Dashboard filters (Unit, Kitchens, Profiles, Tablets, Entity, Organisation)
+Current :
+  FR  "Sélectionner un CUISINES", "Sélectionner un PROFILS", "Sélectionner un Tablettes",
+      "Sélectionner un Unité", "Sélectionner un ENTITÉ", "Sélectionner un Organisation"
+  DE  "Wählen Sie eine Küchen", "Wählen Sie eine Profile", "Wählen Sie eine Tablets"
+  PT  "Selecione uma Comprimidos", "Selecione uma Cozinhas", "Selecione uma Perfiles"
+  IT  "Selezionare una Cucine", "Selezionare una Profili", "Selezionare una Tablets",
+      "Selezionare una Entita"
+  TR  "Bir seçim yapınız MUTFAKLAR", "Bir seçim yapınız PROFİLLER", "Bir seçim yapınız Varlik"
+  PL  "Wybierz Jednostka", "Wybierz Organizacja", "Wybierz Nazwa podmiotu" (wrong grammatical case)
+Root cause: the placeholder joins a fixed "Select a" with the label, so article/gender/case
+            cannot agree.
+Suggested: one complete translated placeholder string per filter
+           (e.g. FR "Sélectionner des cuisines", DE "Küchen auswählen", PL "Wybierz jednostkę"),
+           or a neutral form such as "Cuisines : sélectionner".
+
+----------------------------------------------------------------------------
+TICKET 3 - Large volumes (millions / billions of litres / gallons) worded incorrectly
+----------------------------------------------------------------------------
+Where   : Analytics Dashboard -> Waste Impact (water footprint)
+Current :
+  FR  "millions litres", "milliards litres", "millions gallons"   (missing "de")
+  DE  "Millionen Liters", "Milliarden Liters"                    (should be "Liter")
+  PT  "milhões litros", "milhões galões", "biliões litros"        (missing "de")
+  IT  "milioni di euro galloni", "milioni di euro litri"          (contains "EURO" - wrong!)
+      "miliardo litri"                                            (singular, missing "di")
+  TR  "milyon litres", "milyar litres", "milyon galon"            (English plural "litres")
+  PL  "milion galony", "milion litry", "miliard litry"            (wrong case)
+Suggested: FR "millions de litres" | DE "Millionen Liter" | PT "milhões de litros"
+           IT "milioni di litri" / "miliardi di litri" | TR "milyon litre" | PL "mln litrów" / "mld litrów"
+Priority : HIGH for Italian ("euro" shown next to a volume)
+
+----------------------------------------------------------------------------
+TICKET 4 - "<Name> Management" heading on Org / Unit home page
+----------------------------------------------------------------------------
+Where   : Org admin home page, Unit admin home page
+Current :
+  FR  "Shreemaya Gestion de"        (broken word order, dangling "de")
+  DE  "Shreemaya Management", "abbb MANAGEMENT", "Sejal Unit 01 MANAGEMENT"   (English)
+  IT  "Shreemaya Direzione"
+  TR  "Yönet Shreemaya", "YÖNET Complexes"   (Turkish verb should come last)
+Suggested: translated template with a name placeholder,
+           e.g. FR "Gestion de {name}", DE "{name}-Verwaltung", TR "{name} Yönetimi"
+
+----------------------------------------------------------------------------
+TICKET 5 - "To*" (recipients) field in Reports modal mistranslated
+----------------------------------------------------------------------------
+Where   : Reports modal -> recipients field label
+Current :
+  DE  "Bis*"    (means "until")
+  TR  "için*"   (means "for")
+Suggested: DE "An*" | TR "Kime*"
+(FR "Destinataires*", PT "Para*", IT "A*", PL "Do*" are fine)
+
+----------------------------------------------------------------------------
+TICKET 6 - "Clear" button translated with the wrong meaning
+----------------------------------------------------------------------------
+Where   : Analytics Dashboard -> button next to the date range
+Current :
+  DE  "Klar"     (means "obvious" / "clear sky")
+  IT  "Libero"   (means "free")
+Suggested: DE "Löschen" or "Zurücksetzen" | IT "Cancella"
+
+----------------------------------------------------------------------------
+TICKET 7 - Program terms left in English inside translated sentences  (PRODUCT DECISION)
+----------------------------------------------------------------------------
+Where   : Home pages, all languages
+Current : "GÉRER Complexes", "...pour cette Complex...", "...toutes ses Units...",
+          "# Complexes doivent être configuré", "...de niveau tree..." (Stag)
+Note    : The word changes per program (Dev "Complexes", Stag "Units" / "tree"), so it is a
+          configurable program term.
+Question: Should configurable program terms be translatable?
+
+----------------------------------------------------------------------------
+TICKET 8 - English chart labels on Entity Analytics Dashboard  (TO VERIFY)
+----------------------------------------------------------------------------
+Where   : Entity admin -> Analytics Dashboard (all languages)
+Current : "Category One", "Category Two", "Category Three", "Category Four",
+          "Cities", "Jobs", "Business", "Client"
+Question: Are these category labels coming from data, or leftover placeholder chart content?
+
+
+############################################################################
+PART B - LANGUAGE-SPECIFIC ISSUES
+############################################################################
+
+----------------------------------------------------------------------------
+TICKET 9 - French (Français - Canadien)
+----------------------------------------------------------------------------
+1. Entity home     : "# Complexes doivent être configuré"
+                     -> agreement error. Suggested: "...doivent être configurés"
+2. Org home        : "Shreemaya Gestion de"
+                     -> word order. Suggested: "Gestion de Shreemaya" (see Ticket 4)
+3. Send Now message: "Le courrier a été envoyé à votre ID de courriel enregistré..."
+                     -> awkward. Suggested: "...à votre adresse courriel enregistrée..."
+
+----------------------------------------------------------------------------
+TICKET 10 - German (Deutsch)
+----------------------------------------------------------------------------
+1. Entity home     : "ERWALTEN Complexes" / "ERWALTEN Units"
+                     -> missing first letter. Suggested: "VERWALTEN ..."            [HIGH]
+2. Global home     : "# Anstehende Behälter anforderung"
+                     -> compound split wrongly. Suggested: "# ausstehende Behälteranforderungen"
+3. Global home     : "Globale Admin"
+                     -> grammar. Suggested: "Globaler Admin"
+4. Reports modal   : "Bis*" -> see Ticket 5. Suggested: "An*"
+5. Dashboard       : "Klar" (Clear button) -> see Ticket 6. Suggested: "Löschen"
+6. Dashboard       : "Imperialer"
+                     -> adjective without noun. Suggested: "Imperial" / "Angloamerikanisch"
+7. Dashboard       : "CO2 Fussabdruck" vs "Wasser-Fußabdruck"
+                     -> inconsistent spelling. Suggested: "CO2-Fußabdruck"
+8. Dashboard       : "Teller Abfall", "Catering Essensreste"
+                     -> compounds split. Suggested: "Tellerabfall", "Catering-Essensreste"
+9. Reports modal   : "...in dem Sie diese durch Semikolons trennen."
+                     -> grammar. Suggested: "...indem Sie..."
+10. Reports modal  : "zeitplan"   -> noun must be capitalised: "Zeitplan"
+11. Reports modal  : "Versandhäufigkeit *" -> stray space before "*"
+
+----------------------------------------------------------------------------
+TICKET 11 - Portuguese (Português)
+----------------------------------------------------------------------------
+1. Dashboard filter: "Comprimidos" (Tablets)
+                     -> means "pills". Suggested: "Tablets"                          [HIGH]
+2. Dashboard filter: "Perfiles"
+                     -> Spanish word. Suggested: "Perfis" (already used on home page)
+3. Dashboard       : "DASHBOARD", "DATA RANGE:"
+                     -> not translated. Suggested: "PAINEL", "INTERVALO DE DATAS:"
+4. Dashboard       : "selecção clara da data"
+                     -> literal translation of "clear". Suggested: "Limpar seleção de data"
+5. Dashboard       : "Animais de alimentação"
+                     -> means "food animals". Suggested: "Alimentar animais"
+6. Entity home     : "TAGS DE GESTÃO"
+                     -> means "management tags". Suggested: "GERIR ETIQUETAS"
+7. Reports modal   : 'Descarregue o seu relatório “Waste Not"'
+                     -> mismatched quotes. Suggested: “Waste Not”
+8. General         : "Baixar dados..." (Brazilian) next to "Descarregue..." (European)
+                     -> mixes pt-BR and pt-PT. Pick one variety.
+
+----------------------------------------------------------------------------
+TICKET 12 - Italian (Italiano)
+----------------------------------------------------------------------------
+1. Dashboard       : "milioni di euro galloni", "milioni di euro litri", "miliardo litri"
+                     -> "euro" is wrong. Suggested: "milioni di litri" (see Ticket 3)   [HIGH]
+2. Dashboard       : "DATA DI SCADENZA:" (date range label)
+                     -> means "EXPIRY DATE". Suggested: "INTERVALLO DI DATE:"           [HIGH]
+3. Dashboard       : "Libero" (Clear button)
+                     -> means "free". Suggested: "Cancella"
+4. Entity home /   : "SCHEDA" / "ShreeMaya Indore SCHEDA"
+   Dashboard         -> means "tab / card"; inconsistent with "Cruscotto analitico".
+                     Suggested: "CRUSCOTTO"
+5. Dashboard filter: "Entita"
+                     -> missing accent. Suggested: "Entità"
+6. Entity home     : "# Le Complexes devono essere impostate"
+                     -> article after the number. Suggested: "Le # Complexes devono essere impostate"
+7. Reports         : "RAPPORTI" / "REPORT PROGRAMMATI" / "rapporto"
+                     -> inconsistent term for "report". Use one term throughout.
+
+----------------------------------------------------------------------------
+TICKET 13 - Turkish (Türkçe)
+----------------------------------------------------------------------------
+1. Dashboard       : "oli̇mpi̇k yüzme havuzları"
+                     -> broken characters (extra dot marks on "i"). Suggested: "olimpik"  [HIGH]
+2. Unit / Entity   : "...görüntüleyin.Complex düzeyinde...", "...davet edin.tree düzeyinde..."
+   home              -> missing space after full stop
+3. Reports modal   : "için*" -> see Ticket 5. Suggested: "Kime*"
+4. Dashboard filter: "Varlik"
+                     -> wrong letter (ı), and Entity is "Kuruluş" elsewhere. Use "Kuruluş".
+5. Dashboard filter: "Proje" used for Unit
+                     -> to verify the correct term
+6. Dashboard       : "tons atıkların"
+                     -> grammar + Ticket 1. Suggested: "ton atık"
+7. Global home     : "Genel Yönetici İzinlerini Yönet" vs "Global Yönetici"
+                     -> inconsistent term. Use one.
+8. Org home        : "Yönet Shreemaya", "YÖNET Complexes"
+                     -> word order (see Ticket 4)
+
+----------------------------------------------------------------------------
+TICKET 14 - Polish (Polski)
+----------------------------------------------------------------------------
+1. Dashboard       : "Whoops"
+                     -> English. Suggested: "Ups"
+2. Dashboard filter: "Profiles"
+                     -> English. Suggested: "Profile"
+3. Unit home       : "...dla tej Complexoraz zarządzaj nimi...", "...dla tej treeoraz..."
+                     -> missing space. Suggested: "Complex oraz"
+4. Dashboard filter: "Nazwa podmiotu" used as the Entity label
+                     -> means "Entity name". Suggested: "Podmiot"
+5. Dashboard filter: "Wybierz Jednostka", "Wybierz Organizacja"
+                     -> wrong case (see Ticket 2). Suggested: "Wybierz jednostkę"
+6. Reports modal   : 'Pobierz raport „Waste not"'
+                     -> casing and quotes. Suggested: „Waste Not”
+7. Reports modal   : "Będziesz mieć # godziny na pobranie raportu."
+                     -> plural depends on the number (48 / 72 -> "godzin"). To verify.
+
+
+############################################################################
+SUMMARY - HIGH PRIORITY
+############################################################################
+  - IT  "milioni di euro galloni / litri"        (wrong meaning: euro)
+  - IT  "DATA DI SCADENZA:"                       (means expiry date)
+  - PT  "Comprimidos" for Tablets                 (means pills)
+  - DE  "ERWALTEN"                                (typo, missing V)
+  - TR  "oli̇mpi̇k"                                 (broken characters)
+  - ALL "tons" untranslated
+  - ALL "Select a" + label placeholder grammar
+
+After fixes are deployed, refresh the automated baselines for the fixed language:
+  UPDATE_TRANSLATION_BASELINE=true TRANSLATION_LANG=<lang> npx playwright test tests/WNG/Translations

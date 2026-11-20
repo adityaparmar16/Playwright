@@ -26,7 +26,7 @@ test.describe('WasteNot - Complex DB Validation', () => {
     }
 
     for (const admin of ADMINS) {
-        test(`${{ login: 'Login + tracking calendar', calendar: 'Login + tracking calendar + cost center', full: 'Validate UI data with DB for Complex' }[admin.mode]} – ${admin.key} (${admin.label})`, async ({ page }) => {
+        test(`${{ dashboard: 'Login + dashboard', login: 'Login + tracking calendar', calendar: 'Login + tracking calendar + cost center', full: 'Validate UI data with DB for Complex' }[admin.mode]} – ${admin.key} (${admin.label})`, async ({ page }) => {
             test.setTimeout(360000);
 
             await runCompassFlow({

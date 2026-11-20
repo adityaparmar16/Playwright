@@ -196,6 +196,33 @@ export class CompassPage {
     }
 
     /**
+     * For admins whose complex isn't configured: opens the Complex filter, picks the first complex
+     * listed and returns its code (options read like "UA San Francisco Polaris C-58001").
+     * @returns {Promise<{ code: string, name: string }>}
+     */
+    async selectFirstAvailableComplex() {
+        const allComplexesBtn = this.page.getByRole('button', { name: 'All Complexes' });
+        await allComplexesBtn.waitFor({ state: 'visible', timeout: 15000 });
+        await allComplexesBtn.click();
+
+        const options = this.page.getByRole('option').filter({ visible: true });
+        await expect(options.first()).toBeVisible({ timeout: 15000 });
+        const count = await options.count();
+        for (let i = 0; i < count; i++) {
+            const text = (await options.nth(i).innerText()).replace(/\s+/g, ' ').trim();
+            const m = text.match(/^(.*?)\s*(C-\d+)\s*$/i) || text.match(/(C-\d+)/i);
+            if (!m) continue; // e.g. a "select all" entry
+            await options.nth(i).click();
+            await this.closeFilterDropdown();
+            const code = (m[2] || m[1]).toUpperCase();
+            const name = m[2] ? m[1].trim() : text.replace(m[1], '').trim();
+            console.log(`🏢 No complex configured – picked the first available: ${name} (${code})`);
+            return { code, name };
+        }
+        throw new Error('Complex filter has no complex with a C-code to pick');
+    }
+
+    /**
      * Closes an open filter dropdown by clicking outside it (that applies the selection).
      * Clicking the "COMPASS" text hung on pages where that text isn't visible (e.g. legacy.cafebonappetit.com).
      */
@@ -267,6 +294,22 @@ export class CompassPage {
             if (/^All Kitchens$/i.test(await this.filterValue('Kitchen'))) return;
             await this.page.waitForTimeout(500);
         } while (Date.now() < deadline);
+    }
+
+    // ── Manage Settings (shown only at complex / cost center level) ─────
+
+    manageSettingsButtons() {
+        return this.page.getByRole('button', { name: /manage settings/i }).filter({ visible: true });
+    }
+
+    async assertManageSettingsVisible(context) {
+        await expect(this.manageSettingsButtons().first(), `MANAGE SETTINGS should be visible ${context}`).toBeVisible({ timeout: 15000 });
+        console.log(`⚙️  MANAGE SETTINGS visible ${context}`);
+    }
+
+    async assertManageSettingsHidden(context) {
+        await expect(this.manageSettingsButtons(), `MANAGE SETTINGS should not be shown ${context}`).toHaveCount(0, { timeout: 15000 });
+        console.log(`⚙️  MANAGE SETTINGS hidden ${context}`);
     }
 
     // ── Tracking calendar: previous-month navigation ───────────────────
@@ -379,6 +422,7 @@ export class CompassPage {
 
             if (hasKitchen && await this.isTrackingCalendarVisible(15000)) {
                 console.log(`✅ Cost center "${label}" → kitchen "${kitchen}" – tracking calendar visible`);
+                await this.assertManageSettingsVisible(`after selecting cost center ${label}`);
                 return { costCenter: label, kitchen };
             }
 

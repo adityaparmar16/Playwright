@@ -20,7 +20,7 @@ export async function runCompassFlow({ page, admin, url, dbConfig, nowSubject, s
   if (!admin.password) throw new Error(`No password for ${admin.key} – set COMPASS_${admin.key.toUpperCase()}_PASSWORD or WASTENOT_PASSWORD`);
 
   test.info().annotations.push({ type: 'admin', description: `${admin.label} (${admin.key})` });
-  const what = { login: 'login + tracking calendar + waste trend', calendar: 'login + tracking calendar + waste trend + cost center', full: `full flow on complex ${admin.complexId}` };
+  const what = { dashboard: 'login + dashboard only', login: 'login + tracking calendar + waste trend', calendar: 'login + tracking calendar + waste trend + cost center', full: `full flow on complex ${admin.complexId}` };
   console.log(`👤 Running as ${admin.label} [${admin.key}] – ${what[admin.mode]}`);
 
   const compass = new CompassPage(page);
@@ -35,17 +35,23 @@ export async function runCompassFlow({ page, admin, url, dbConfig, nowSubject, s
   await compass.handleOtp(admin.otp);
   await compass.dismissStaySignedIn();
 
+  // Dashboard admins: login + dashboard reached, then stop (used while an account's access isn't known yet)
+  if (admin.mode === 'dashboard') {
+    await compass.assertLoggedIn(admin.expectText);
+    const scope = (await compass.hasComplexFilter())
+      ? `Complex filter: ${await compass.filterValue('Complex')}`
+      : 'no Complex filter (complex-level access)';
+    console.log(`✅ ${admin.label} logged in and reached the dashboard – ${scope}`);
+    return;
+  }
+
   // Login admins: dashboard reached + tracking calendar + waste trend, then stop (no cost center step)
   if (admin.mode === 'login') {
     await compass.assertLoggedIn(admin.expectText);
     console.log(`✅ ${admin.label} logged in and reached the dashboard`);
-    // The calendar needs a complex in scope: complex-level admins have one on login, others need COMPLEX_ID
-    if (admin.complexIdSet || !(await compass.hasComplexFilter())) {
-      await checkTrackingCalendar(compass, admin);
-      await compass.checkCalendarPreviousMonth();
-    } else {
-      throw new Error(`Tracking calendar needs a complex for ${admin.key} – set COMPASS_${admin.key.toUpperCase()}_COMPLEX_ID=C-xxxxx`);
-    }
+    // Complex-level admins have a complex on login; others use COMPLEX_ID, or the first complex they can see
+    await checkTrackingCalendar(compass, admin);
+    await compass.checkCalendarPreviousMonth();
     await validateWasteTrend({ compass, page, admin, dbConfig });
     return;
   }
@@ -128,7 +134,15 @@ async function ensureComplexScope(compass, admin) {
   if (!(await compass.hasComplexFilter())) return false; // complex-level access – nothing to select
   const current = await compass.filterValue('Complex');
   if (/^All Complexes$/i.test(current) || !current) {
-    await compass.selectComplex(admin.complexId);
+    await compass.assertManageSettingsHidden('before a complex is selected');
+    if (admin.complexIdSet || admin.mode === 'full') {
+      await compass.selectComplex(admin.complexId);
+    } else {
+      // access not configured: take the first complex this admin can see, and use its code for the DB checks
+      const picked = await compass.selectFirstAvailableComplex();
+      admin.complexId = picked.code;
+      admin.complexIdSet = true;
+    }
   } else {
     console.log(`Complex already selected: ${current}`);
   }
@@ -141,5 +155,7 @@ async function ensureComplexScope(compass, admin) {
  */
 async function checkTrackingCalendar(compass, admin) {
   const selected = await ensureComplexScope(compass, admin);
-  await compass.assertTrackingCalendarVisible(selected ? `after selecting complex ${admin.complexId}` : 'on login (complex-level access)');
+  const context = selected ? `after selecting complex ${admin.complexId}` : 'on login (complex-level access)';
+  await compass.assertTrackingCalendarVisible(context);
+  await compass.assertManageSettingsVisible(context);
 }

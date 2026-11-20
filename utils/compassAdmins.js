@@ -9,6 +9,7 @@
 //   COMPASS_ADMIN2_OTP=...                 # optional – defaults to WASTENOT_OTP (empty = enter OTP manually)
 //   COMPASS_ADMIN2_COMPLEX_ID=C-12345      # optional – complex this admin can see, defaults to COMPASS_COMPLEX_ID
 //   COMPASS_ADMIN2_MODE=login              # optional – what to run for this admin (default "full"):
+//                                          #   dashboard = sign in and reach the dashboard only (access not known yet)
 //                                          #   login    = sign in + tracking calendar + waste trend UI vs DB
 //                                          #   calendar = login + tracking calendar + waste trend UI vs DB
 //                                          #              + a cost center with a kitchen set up
@@ -57,7 +58,7 @@ export function getCompassAdmins(env) {
       complexIdSet: /^C-\d+$/i.test(String(val('COMPLEX_ID', '')).trim()),
       // COMPASS_ADMINn_WASTE_TREND=false skips the Waste Trend check for this admin (login/calendar modes)
       wasteTrend: String(val('WASTE_TREND', 'true')).toLowerCase() !== 'false',
-      mode: ['login', 'calendar'].includes(String(val('MODE', 'full')).toLowerCase())
+      mode: ['dashboard', 'login', 'calendar'].includes(String(val('MODE', 'full')).toLowerCase())
         ? String(val('MODE')).toLowerCase() : 'full',
       expectText: val('EXPECT_TEXT', ''),
     });

@@ -21,7 +21,7 @@ export async function runCompassFlow({ page, admin, url, dbConfig, nowSubject, s
 
   test.info().annotations.push({ type: 'admin', description: `${admin.label} (${admin.key})` });
   const what = { dashboard: 'login + dashboard only', login: 'login + tracking calendar + waste trend', calendar: 'login + tracking calendar + waste trend + cost center', full: `full flow on complex ${admin.complexId}` };
-  console.log(`👤 Running as ${admin.label} [${admin.key}] – ${what[admin.mode]}`);
+  console.log(`👤 Running as ${admin.label} [${admin.key}] – ${what[admin.mode]}${admin.mode !== 'full' && admin.sendNow ? ' + Send Now report' : ''}`);
 
   const compass = new CompassPage(page);
 
@@ -53,6 +53,7 @@ export async function runCompassFlow({ page, admin, url, dbConfig, nowSubject, s
     await checkTrackingCalendar(compass, admin);
     await compass.checkCalendarPreviousMonth();
     await validateWasteTrend({ compass, page, admin, dbConfig });
+    await sendNowIfEnabled({ compass, admin, nowSubject, reportEmail });
     return;
   }
 
@@ -62,6 +63,12 @@ export async function runCompassFlow({ page, admin, url, dbConfig, nowSubject, s
     await checkTrackingCalendar(compass, admin);
     await compass.checkCalendarPreviousMonth();
     await validateWasteTrend({ compass, page, admin, dbConfig });
+    if (await sendNowIfEnabled({ compass, admin, nowSubject, reportEmail })) {
+      // Reload to close the report modal; re-select the complex if the reload cleared it
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await compass.assertLoggedIn(admin.expectText);
+      await checkTrackingCalendar(compass, admin);
+    }
     await compass.selectCostCenterWithKitchen({ resetScope: () => checkTrackingCalendar(compass, admin) });
     return;
   }
@@ -94,6 +101,18 @@ export async function runCompassFlow({ page, admin, url, dbConfig, nowSubject, s
   await compass.assertLoggedIn();
   await checkTrackingCalendar(compass, admin);
   await compass.selectCostCenterWithKitchen({ resetScope: () => checkTrackingCalendar(compass, admin) });
+}
+
+/**
+ * Sends a "Now" report for login/calendar admins with COMPASS_ADMINn_SEND_NOW=true.
+ * Returns true when a report was sent (the report modal is then still open).
+ */
+async function sendNowIfEnabled({ compass, admin, nowSubject, reportEmail }) {
+  if (!admin.sendNow) return false;
+  console.log(`📧 Sending Now report for ${admin.label} [${admin.key}] to ${reportEmail}`);
+  await compass.sendNowReport([reportEmail], nowSubject);
+  console.log(`✅ Now report sent for ${admin.key}`);
+  return true;
 }
 
 /**

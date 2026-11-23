@@ -17,6 +17,8 @@
 //                                          #   full     = everything: complex, calendar, DB vs UI lbs, reports, cost center
 //   COMPASS_ADMIN2_EXPECT_TEXT="CCC ADMIN" # optional – text that must appear after login (e.g. the access breadcrumb)
 //   COMPASS_ADMIN2_WASTE_TREND=false       # optional – skip the Waste Trend check (login/calendar modes)
+//   COMPASS_ADMIN2_SEND_NOW=true           # optional – also send a "Now" report (login/calendar modes;
+//                                          #   full mode always sends one). No scheduled report is created.
 //
 // Any of these can differ per environment by adding DEV / STAG / PROD after the number, e.g.
 //   COMPASS_ADMIN2_PROD_LOGIN_ID=...  or  COMPASS_ADMIN2_DEV_COMPLEX_ID=C-99999
@@ -58,6 +60,8 @@ export function getCompassAdmins(env) {
       complexIdSet: /^C-\d+$/i.test(String(val('COMPLEX_ID', '')).trim()),
       // COMPASS_ADMINn_WASTE_TREND=false skips the Waste Trend check for this admin (login/calendar modes)
       wasteTrend: String(val('WASTE_TREND', 'true')).toLowerCase() !== 'false',
+      // COMPASS_ADMINn_SEND_NOW=true sends a "Now" report in login/calendar modes (full mode always does)
+      sendNow: String(val('SEND_NOW', 'false')).toLowerCase() === 'true',
       mode: ['dashboard', 'login', 'calendar'].includes(String(val('MODE', 'full')).toLowerCase())
         ? String(val('MODE')).toLowerCase() : 'full',
       expectText: val('EXPECT_TEXT', ''),
